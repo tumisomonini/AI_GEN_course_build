@@ -1,0 +1,21 @@
+# Agentic Course Generation Platform
+
+## Overview
+This platform autonomously generates structured educational course material using a multi-agent system.
+
+## Setup
+
+### Prerequisites
+- Docker
+- Python 3.9+
+
+### Installation
+1. Clone the repository.
+2. Run `docker-compose up --build` to start the services.
+3. Access the API at `http://localhost:8000`.
+
+## Usage
+- **Generate a Syllabus:**
+  `POST /syllabus/generate`
+
+## Project Structure
