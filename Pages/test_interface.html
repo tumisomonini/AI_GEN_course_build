@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agentic AI Course Builder - Search & Generate</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        /* Step Indicator */
+        .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; gap: 10px; }
+        .step { display: flex; align-items: center; }
+        .step-number { width: 35px; height: 35px; border-radius: 50%; background: #e0e0e0; color: #666; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 8px; transition: all 0.3s ease; }
+        .step.active .step-number { background: #2196F3; color: white; }
+        .step.completed .step-number { background: #4CAF50; color: white; }
+        .step-label { font-size: 14px; color: #666; }
+        .step.active .step-label { color: #2196F3; font-weight: bold; }
+        .step.completed .step-label { color: #4CAF50; }
+        .step-connector { width: 50px; height: 2px; background: #e0e0e0; margin: 0 10px; }
+        .step.completed + .step-connector, .step-connector.completed { background: #4CAF50; }
+        
+        /* Course Builder Form */
+        .builder-form { background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px; border: 2px solid #e3f2fd; }
+        .form-row { display: grid; grid-template-columns: 1fr auto auto; gap: 15px; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select {
+            padding: 13px 16px; font-size: 16px; border: 2px solid #ddd;
+            border-radius: 8px; outline: none; transition: border-color 0.2s; box-sizing: border-box;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: #2196F3; box-shadow: 0 0 0 3px rgba(33,150,243,0.1); }
+        .form-group input::placeholder { color: #aaa; }
+        .level-pills { display: flex; gap: 8px; }
+        .level-pill {
+            flex: 1; padding: 12px 8px; border: 2px solid #ddd; border-radius: 8px;
+            background: white; cursor: pointer; font-size: 13px; font-weight: 600;
+            text-align: center; transition: all 0.2s; color: #666;
+        }
+        .level-pill:hover { border-color: #2196F3; color: #2196F3; }
+        .level-pill.selected { border-color: #2196F3; background: #2196F3; color: white; }
+        .level-pill.selected.beginner { border-color: #4CAF50; background: #4CAF50; }
+        .level-pill.selected.intermediate { border-color: #FF9800; background: #FF9800; }
+        .level-pill.selected.advanced { border-color: #f44336; background: #f44336; }
+        .duration-stepper { display: flex; align-items: center; gap: 10px; }
+        .duration-stepper button {
+            width: 36px; height: 36px; border: 2px solid #ddd; border-radius: 50%;
+            background: white; font-size: 18px; cursor: pointer; line-height: 1;
+            transition: all 0.2s; color: #555;
+        }
+        .duration-stepper button:hover { border-color: #2196F3; color: #2196F3; }
+        .duration-stepper button:disabled { opacity: 0.3; cursor: not-allowed; border-color: #ddd; color: #aaa; }
+        .duration-stepper span { font-size: 20px; font-weight: bold; color: #2c3e50; min-width: 80px; text-align: center; }
+        .generate-main-btn {
+            background: linear-gradient(135deg, #4CAF50, #2196F3); color: white;
+            border: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;
+            font-weight: bold; cursor: pointer; white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(33,150,243,0.3); transition: all 0.2s;
+        }
+        .generate-main-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(33,150,243,0.4); }
+        .generate-main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Results */
+        #searchResults { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
+        .course-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s; border-left: 5px solid #2196F3; }
+        .course-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .course-title { font-size: 18px; font-weight: bold; margin: 0 0 10px 0; color: #2c3e50; }
+        .course-meta { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .meta-item { background: #f0f4f8; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; color: #555; }
+        .course-preview { color: #666; line-height: 1.5; margin-bottom: 16px; font-size: 14px; }
+        .use-btn { background: #2196F3; color: white; border: none; padding: 9px 20px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .use-btn:hover { background: #1976D2; }
+
+        /* Loading */
+        .loading { text-align: center; padding: 30px; color: #666; }
+        .spinner { width: 36px; height: 36px; border: 4px solid #f3f3f3; border-top: 4px solid #2196F3; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Continue Workflow */
+        .continue-workflow { background: #e8f5e8; border: 2px solid #4CAF50; border-radius: 12px; padding: 25px; margin: 20px 0; text-align: center; }
+        .continue-workflow button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin: 5px; }
+
+        @media (max-width: 700px) {
+            .form-row { grid-template-columns: 1fr; }
+            .container { padding: 20px; margin: 10px; }
+            #searchResults { grid-template-columns: 1fr; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) { 
+            .container { padding: 20px; margin: 10px; }
+            #searchResults { grid-template-columns: 1fr; }
+            .search-box { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 AI Course Builder</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 25px;">Enter a topic, pick your level and duration — we'll generate the full course template</p>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active">
+                <div class="step-number">1</div>
+                <div class="step-label">Create Course</div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-label">Review Template</div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-label">Download Course</div>
+            </div>
+        </div>
+
+        <!-- Course Builder Form -->
+        <div class="builder-form">
+            <div class="form-row">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Course Topic</label>
+                    <input type="text" id="courseTitle" placeholder="e.g. Python, Machine Learning, Web Development, Data Science..." />
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div class="form-group">
+                    <label>Difficulty Level</label>
+                    <div class="level-pills">
+                        <button type="button" class="level-pill beginner selected" data-level="beginner" onclick="selectLevel('beginner')">🟢 Beginner</button>
+                        <button type="button" class="level-pill intermediate" data-level="intermediate" onclick="selectLevel('intermediate')">🟡 Intermediate</button>
+                        <button type="button" class="level-pill advanced" data-level="advanced" onclick="selectLevel('advanced')">🔴 Advanced</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Duration</label>
+                    <div class="duration-stepper">
+                        <button type="button" id="durDecrBtn" onclick="changeDuration(-1)">−</button>
+                        <span id="durationDisplay">3 months</span>
+                        <button type="button" id="durIncrBtn" onclick="changeDuration(1)">+</button>
+                    </div>
+                    <small style="color: #aaa; font-size: 12px; margin-top: 4px;">1 – 12 months</small>
+                </div>
+            </div>
+            <div style="margin-top: 25px; text-align: center;">
+                <button class="generate-main-btn" id="generateBtn" onclick="generateCourse()">
+                    🚀 Generate Course Template
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p id="loadingMsg">Generating your course template...</p>
+        </div>
+
+        <!-- Existing Courses (search results) -->
+        <div id="existingSection" style="display: none;">
+            <h3 style="color: #555; margin-bottom: 15px;">📚 Existing Courses Matching Your Topic</h3>
+            <div id="searchResults"></div>
+        </div>
+
+        <!-- Continue Previous Workflow -->
+        <div id="continueWorkflow" style="display: none;" class="continue-workflow">
+            <h3>↩️ Continue Previous Course</h3>
+            <p>You have a course in progress:</p>
+            <button onclick="goToReview('approval')">📝 Continue Review</button>
+            <button onclick="goToReview('course')">📖 Final Review</button>
+            <button onclick="clearWorkflow()" style="background: #dc3545;">✕ Start Fresh</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedLevel = 'beginner';
+        let durationMonths = 3;
+        let searchTimeout;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedCourseId = localStorage.getItem('course_id');
+            const savedApprovalId = localStorage.getItem('approval_id');
+            if (savedCourseId || savedApprovalId) {
+                document.getElementById('continueWorkflow').style.display = 'block';
+            }
+
+            // Search existing courses as user types the topic
+            document.getElementById('courseTitle').addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const q = this.value.trim();
+                if (q.length >= 2) {
+                    searchTimeout = setTimeout(() => searchExisting(q), 500);
+                } else {
+                    document.getElementById('existingSection').style.display = 'none';
+                    document.getElementById('searchResults').innerHTML = '';
+                }
+            });
+
+            document.getElementById('courseTitle').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') generateCourse();
+            });
+        });
+
+        function selectLevel(level) {
+            selectedLevel = level;
+            document.querySelectorAll('.level-pill').forEach(p => {
+                p.classList.toggle('selected', p.dataset.level === level);
+            });
+        }
+
+        function changeDuration(delta) {
+            durationMonths = Math.min(12, Math.max(1, durationMonths + delta));
+            document.getElementById('durationDisplay').textContent =
+                durationMonths + (durationMonths === 1 ? ' month' : ' months');
+            document.getElementById('durDecrBtn').disabled = durationMonths === 1;
+            document.getElementById('durIncrBtn').disabled = durationMonths === 12;
+        }
+
+        async function searchExisting(query) {
+            try {
+                const res = await fetch(`/api/v1/search-courses?q=${encodeURIComponent(query)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const dbResults = (data.results || []).filter(r => r.course_id > 0);
+                if (dbResults.length === 0) {
+                    document.getElementById('existingSection').style.display = 'none';
+                    return;
+                }
+                displayExisting(dbResults);
+            } catch (_) {}
+        }
+
+        function displayExisting(results) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = results.map(c => `
+                <div class="course-card">
+                    <h2 class="course-title">${c.title}</h2>
+                    <div class="course-meta">
+                        <span class="meta-item">${(c.level || 'N/A').toUpperCase()}</span>
+                        <span class="meta-item">${c.duration_months || '?'} months</span>
+                        <span class="meta-item">${c.status || 'draft'}</span>
+                    </div>
+                    <p class="course-preview">${c.preview || ''}</p>
+                    <button class="use-btn" onclick="openExisting(${c.course_id})">📖 Open Course</button>
+                </div>
+            `).join('');
+            document.getElementById('existingSection').style.display = 'block';
+        }
+
+        function openExisting(courseId) {
+            localStorage.setItem('course_id', courseId);
+            window.location.href = `/Pages/course_review_interface.html?course_id=${courseId}`;
+        }
+
+        async function generateCourse() {
+            const title = document.getElementById('courseTitle').value.trim();
+            if (!title) {
+                document.getElementById('courseTitle').focus();
+                document.getElementById('courseTitle').style.borderColor = '#f44336';
+                setTimeout(() => document.getElementById('courseTitle').style.borderColor = '', 2000);
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loadingMsg').textContent =
+                `Building "${title}" — ${selectedLevel}, ${durationMonths} month${durationMonths > 1 ? 's' : ''}...`;
+
+            try {
+                const res = await fetch('/api/v1/generate/course-template', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ title, level: selectedLevel, duration_months: durationMonths })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server error ${res.status}`);
+                }
+
+                const result = await res.json();
+                const courseId = result.course_id || result.approval_id;
+                if (courseId) {
+                    localStorage.setItem('approval_id', courseId);
+                    localStorage.setItem('course_id', courseId);
+                    window.location.href = `/Pages/approval_interface.html?course_id=${courseId}`;
+                } else {
+                    throw new Error('No course ID returned from server');
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Generation failed: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Generate Course Template';
+            }
+        }
+
+        function goToReview(type) {
+            const id = type === 'approval'
+                ? (localStorage.getItem('approval_id') || localStorage.getItem('course_id'))
+                : localStorage.getItem('course_id');
+            if (!id) { alert('No course ID found.'); return; }
+            window.location.href = type === 'approval'
+                ? `/Pages/approval_interface.html?course_id=${id}`
+                : `/Pages/course_review_interface.html?course_id=${id}`;
+        }
+
+        function clearWorkflow() {
+            if (confirm('Clear saved progress and start fresh?')) {
+                localStorage.removeItem('approval_id');
+                localStorage.removeItem('course_id');
+                document.getElementById('continueWorkflow').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

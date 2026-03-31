@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Course Review</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        .content { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; }
+        .markdown { white-space: pre-wrap; font-family: 'Courier New', monospace; }
+        .loading { text-align: center; padding: 50px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Generated Course Review</h1>
+        
+        <div id="loading" class="loading">
+            <p>🔄 Loading generated course...</p>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div id="course-info"></div>
+            <div id="course-content" class="content"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseId = urlParams.get('course_id');
+
+        if (!courseId) {
+            document.getElementById('loading').innerHTML = '<p>❌ No course ID provided</p>';
+        } else {
+            loadCourse();
+        }
+
+        async function loadCourse() {
+            try {
+                const response = await fetch(`/course-review/${courseId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                displayCourse(data);
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function displayCourse(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Course info
+            const template = data.template || {};
+            document.getElementById('course-info').innerHTML = `
+                <h2>${template.title || 'Generated Course'}</h2>
+                <p><strong>Level:</strong> ${template.level || 'N/A'}</p>
+                <p><strong>Duration:</strong> ${template.duration_months || 'N/A'} months</p>
+                <p><strong>Chapters:</strong> ${template.chapters?.length || 0}</p>
+            `;
+            
+            // Course content
+            let contentHtml = '';
+            
+            if (data.final_markdown) {
+                contentHtml = `
+                    <h3>📄 Complete Course Content</h3>
+                    <div class="markdown">${data.final_markdown}</div>
+                `;
+            } else if (data.generated_content) {
+                contentHtml = '<h3>📚 Generated Chapters</h3>';
+                for (const [chapterTitle, content] of Object.entries(data.generated_content)) {
+                    contentHtml += `
+                        <div class="content">
+                            <h4>${chapterTitle}</h4>
+                            <div class="markdown">${content.theory_content || 'No content generated'}</div>
+                        </div>
+                    `;
+                }
+            } else {
+                contentHtml = '<p>⚠️ No content generated yet</p>';
+            }
+            
+            document.getElementById('course-content').innerHTML = contentHtml;
+        }
+    </script>
+</body>
+</html>
