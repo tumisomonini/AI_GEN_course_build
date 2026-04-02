@@ -147,10 +147,10 @@
 
             <div class="content-nav">
                 <div class="nav-buttons">
-                    <button class="nav-btn active" onclick="showSection('overview')">📋 Overview</button>
-                    <button class="nav-btn" onclick="showSection('chapters')">📖 Chapters</button>
-                    <button class="nav-btn" onclick="showSection('markdown')">📝 Full Course</button>
-                    <button class="nav-btn" onclick="showSection('download')">💾 Download</button>
+                    <button class="nav-btn active" onclick="showSection('overview', this)">📋 Overview</button>
+                    <button class="nav-btn" onclick="showSection('chapters', this)">📖 Chapters</button>
+                    <button class="nav-btn" onclick="showSection('markdown', this)">📝 Full Course</button>
+                    <button class="nav-btn" onclick="showSection('download', this)">💾 Download</button>
                 </div>
             </div>
 
@@ -233,42 +233,42 @@
             }
         });
 
-        // Polling for content updates
+        // Lightweight status polling — only fetches status string, not full content
         let pollInterval = null;
-        const POLL_INTERVAL = 10000; // Poll every 10 seconds
+        const POLL_INTERVAL = 2000;
+        const MAX_POLL_MS = 180000; // 3 minutes
+        const TERMINAL_STATUSES = new Set(['completed', 'published', 'rejected']);
+        let pollStartTime = null;
 
         function startPolling() {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-            }
+            if (pollInterval) clearInterval(pollInterval);
+            pollStartTime = Date.now();
             pollInterval = setInterval(async () => {
+                if (Date.now() - pollStartTime > MAX_POLL_MS) {
+                    stopPolling();
+                    return;
+                }
                 try {
-                    const response = await fetch(`/api/v1/courses/${courseId}/course-review`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        // Check if content has been generated
-                        if (data.generated_content && Object.keys(data.generated_content).length > 0) {
-                            // Content is ready, refresh display
-                            if (!courseData || Object.keys(courseData.generated_content || {}).length === 0) {
-                                console.log('Content has been generated, refreshing display...');
-                                courseData = data;
-                                displayCourse();
-                                showNotification('Content has been generated!');
-                            }
+`/courses/${courseId}/status`
+                    if (!res.ok) return;
+                    const { status } = await res.json();
+                    if (TERMINAL_STATUSES.has(status)) {
+                        stopPolling();
+                        if (status === 'completed' || status === 'published') {
+                            await loadCourse();
+                            showNotification('Content has been generated!');
                         }
                     }
                 } catch (error) {
                     console.error('Polling error:', error);
                 }
             }, POLL_INTERVAL);
-            console.log('Started polling for content updates');
         }
 
         function stopPolling() {
             if (pollInterval) {
                 clearInterval(pollInterval);
                 pollInterval = null;
-                console.log('Stopped polling for content updates');
             }
         }
 
@@ -314,7 +314,7 @@
         async function loadCourse() {
             try {
                 // Use the correct API endpoint with /api/v1 prefix
-                const response = await fetch(`/api/v1/courses/${courseId}/course-review`);
+`/courses/${courseId}/course-review`
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -395,11 +395,12 @@
             document.getElementById('course-title').textContent = `📚 ${template.title}`;
             document.getElementById('course-subtitle').textContent = `${template.level} Level • ${template.duration_months} Months • Generated Course`;
             
-            // Update stats with defensive null checks
-            document.getElementById('chapters-count').textContent = (summary && summary.chapters) ? summary.chapters : 0;
-            document.getElementById('exercises-count').textContent = (summary && summary.exercises_with_solutions) ? summary.exercises_with_solutions : 0;
-            document.getElementById('labs-count').textContent = (summary && summary.labs_with_instructions) ? summary.labs_with_instructions : 0;
-            document.getElementById('content-pages').textContent = courseData.metadata?.content_pages || 0;
+            document.getElementById('chapters-count').textContent = template.chapters?.length ?? 0;
+            const totalExercises = template.chapters?.reduce((s, c) => s + (c.exercises?.length ?? 0), 0) ?? 0;
+            const totalLabs = template.chapters?.reduce((s, c) => s + (c.labs?.length ?? 0), 0) ?? 0;
+            document.getElementById('exercises-count').textContent = totalExercises;
+            document.getElementById('labs-count').textContent = totalLabs;
+            document.getElementById('content-pages').textContent = template.chapters?.length ?? 0;
             
             // Display overview
             displayOverview(template, summary);
@@ -476,83 +477,66 @@
         }
 
         function displayChapters(template, content) {
-            // Defensive null checks
             const chapters = template?.chapters || [];
             const hasRealContent = courseData.metadata?.has_real_content || false;
-            
+            const container = document.getElementById('chapters-content');
+
             if (chapters.length === 0) {
-                document.getElementById('chapters-content').innerHTML = '<p>No chapters available</p>';
+                container.innerHTML = '<p>No chapters available</p>';
                 return;
             }
-            
-            const chaptersHtml = chapters.map((chapter, i) => {
-                const chapterTitle = chapter?.title || `Chapter ${i+1}`;
+
+            const fragment = document.createDocumentFragment();
+
+            chapters.forEach((chapter, i) => {
+                const chapterTitle = chapter?.title || `Chapter ${i + 1}`;
                 const chapterContent = content?.[chapterTitle] || {};
-                const chapterDescription = chapter?.description || 'Comprehensive chapter content';
                 const units = chapter?.units || [];
                 const labs = chapter?.labs || [];
                 const exercises = chapter?.exercises || [];
-                
-                // Check if this specific chapter has real content
-                const chapterHasRealContent = hasRealContent && 
-                    chapterContent?.theory_content && 
-                    typeof chapterContent.theory_content === 'string' &&
+                const chapterHasRealContent = hasRealContent &&
+                    typeof chapterContent?.theory_content === 'string' &&
                     !chapterContent.theory_content.includes('Theory content for');
-                
-                return `
-                    <div class="chapter" id="chapter-${i+1}">
-                        <div class="chapter-header">
-                            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
-                                <h3 style="margin: 0; flex: 1;">Chapter ${i+1}: ${escapeHtml(chapterTitle)}</h3>
-                                <div class="chapter-badges">
-                                    <span class="chapter-badge units">📚 ${units.length} Units</span>
-                                    <span class="chapter-badge labs">🧪 ${labs.length} Labs</span>
-                                    <span class="chapter-badge exercises">💪 ${exercises.length} Exercises</span>
-                                    ${chapterHasRealContent ? '<span class="content-badge real">✅ Real Content</span>' : ''}
-                                    ${!chapterHasRealContent && hasRealContent ? '<span class="content-badge">⚪ Generated</span>' : ''}
-                                </div>
-                            </div>
-                            <p style="margin: 10px 0 0 0; opacity: 0.9;">${escapeHtml(chapterDescription)}</p>
-                        </div>
-                        
-                        <div class="chapter-content">
-                            ${units.length > 0 ? `
-                                <div class="theory-content">
-                                    <h4>📖 Units</h4>
-                                    <ul style="columns: 2; column-gap: 30px;">
-                                        ${units.map((unit, idx) => `<li style="break-inside: avoid;"><strong>Unit ${idx+1}:</strong> ${escapeHtml(unit)}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            ` : '<div class="theory-content"><h4>📖 Units</h4><p>No units available for this chapter</p></div>'}
-                            
-                            ${labs.length > 0 ? `
-                                <div class="theory-content">
-                                    <h4>🧪 Labs</h4>
-                                    <ul>
-                                        ${labs.map((lab, idx) => `<li><strong>Lab ${idx+1}:</strong> ${escapeHtml(lab)}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            ` : '<div class="theory-content"><h4>🧪 Labs</h4><p>No labs available for this chapter</p></div>'}
-                            
-                            ${exercises.length > 0 ? `
-                                <div class="theory-content">
-                                    <h4>💪 Exercises</h4>
-                                    <ul>
-                                        ${exercises.map((exercise, idx) => `<li><strong>Exercise ${idx+1}:</strong> ${escapeHtml(exercise)}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            ` : '<div class="theory-content"><h4>💪 Exercises</h4><p>No exercises available for this chapter</p></div>'}
-                            
-                            <div class="theory-content" style="background: #f8f9fa;">
-                                <h4>📋 Chapter Summary</h4>
-                                <p><strong>Total Units:</strong> ${units.length} | <strong>Total Labs:</strong> ${labs.length} | <strong>Total Exercises:</strong> ${exercises.length}</p>
+
+                const div = document.createElement('div');
+                div.className = 'chapter';
+                div.id = `chapter-${i + 1}`;
+
+                const makeList = (items, label, icon) => {
+                    if (!items.length) return `<div class="theory-content"><h4>${icon} ${label}</h4><p>No ${label.toLowerCase()} available for this chapter</p></div>`;
+                    const lis = items.map((item, idx) => `<li><strong>${label.slice(0, -1)} ${idx + 1}:</strong> ${escapeHtml(item)}</li>`).join('');
+                    const style = label === 'Units' ? ' style="columns:2;column-gap:30px"' : '';
+                    return `<div class="theory-content"><h4>${icon} ${label}</h4><ul${style}>${lis}</ul></div>`;
+                };
+
+                div.innerHTML = `
+                    <div class="chapter-header">
+                        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+                            <h3 style="margin:0;flex:1">Chapter ${i + 1}: ${escapeHtml(chapterTitle)}</h3>
+                            <div class="chapter-badges">
+                                <span class="chapter-badge units">📚 ${units.length} Units</span>
+                                <span class="chapter-badge labs">🧪 ${labs.length} Labs</span>
+                                <span class="chapter-badge exercises">💪 ${exercises.length} Exercises</span>
+                                ${chapterHasRealContent ? '<span class="content-badge real">✅ Real Content</span>' : ''}
                             </div>
                         </div>
+                        <p style="margin:10px 0 0 0;opacity:0.9">${escapeHtml(chapter?.description || '')}</p>
                     </div>
-                `;
-            }).join('');
-            
-            document.getElementById('chapters-content').innerHTML = chaptersHtml;
+                    <div class="chapter-content">
+                        ${makeList(units, 'Units', '📖')}
+                        ${makeList(labs, 'Labs', '🧪')}
+                        ${makeList(exercises, 'Exercises', '💪')}
+                        <div class="theory-content" style="background:#f8f9fa">
+                            <h4>📋 Chapter Summary</h4>
+                            <p><strong>Total Units:</strong> ${units.length} | <strong>Total Labs:</strong> ${labs.length} | <strong>Total Exercises:</strong> ${exercises.length}</p>
+                        </div>
+                    </div>`;
+
+                fragment.appendChild(div);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(fragment);
         }
 
         function displayMarkdown(markdown) {
@@ -568,30 +552,23 @@
                 .replace(/^### (.*$)/gim, '<h3>$1</h3>')
                 .replace(/^\*\*(.*)\*\*/gim, '<strong>$1</strong>')
                 .replace(/^\* (.*$)/gim, '<li>$1</li>')
-                .replace(/```([\\s\\S]*?)```/gim, '<pre><code>$1</code></pre>')
+                .replace(/```([\s\S]*?)```/gm, '<pre><code>$1</code></pre>')
                 .replace(/\n/gim, '<br>');
             
             document.getElementById('markdown-content').innerHTML = html;
         }
 
-        function showSection(section) {
-            // Hide all sections
+        function showSection(section, btn) {
             document.querySelectorAll('.content-section').forEach(el => el.style.display = 'none');
-            
-            // Remove active class from all buttons
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-            
-            // Show selected section
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(section + '-section').style.display = 'block';
-            
-            // Add active class to clicked button
-            event.target.classList.add('active');
+            if (btn) btn.classList.add('active');
         }
 
         async function downloadCourse(format) {
             try {
                 // Use correct API path with /api/v1 prefix
-                const response = await fetch(`/api/v1/courses/${courseId}/download?format=${format}`, {
+`/courses/${courseId}/download?format=${format}`
                     method: 'GET',
                     headers: {'Content-Type': 'application/json'}
                 });
@@ -657,7 +634,7 @@ ${content}
             
             try {
                 // Use correct API path with /api/v1 prefix
-                const response = await fetch(`/api/v1/courses/${courseId}/final-approve`, {
+`/courses/${courseId}/final-approve`
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({approved: true})

@@ -1,22 +1,82 @@
-from fastapi import APIRouter, Depends
-from application.workflows.syllabus_workflow import create_syllabus_workflow
-from application.agents.planner_agent import PlannerAgent
-from application.agents.author_agent import AuthorAgent
-from application.agents.reviewer_agent import ReviewerAgent
-from application.agents.assembler_agent import AssemblerAgent
-from infrastructure.vector.astra_vector_store import AstraVectorStore
-from infrastructure.graph.neo4j_repo import Neo4jRepository
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+import json
+
+from Application.Workflows.syllabus_workflow import create_syllabus_workflow
+from Application.API.agents import get_agents
+from Application.Ports.scraper import scrape_relevant_syllabi
+from Application.Ports.Astra_repo import AstraRepo
+
+class SyllabusRequest(BaseModel):
+    topics: List[str] = ["Intro to Python", "Advanced Python"]
+    title: Optional[str] = None
+
+class ScrapeRequest(BaseModel):
+    title: str
 
 router = APIRouter()
 
+@router.post("/scrape")
+async def scrape_syllabus(request: ScrapeRequest):
+    """Scrape relevant syllabi for given course title and store chunks in AstraDB"""
+    try:
+        syllabi = scrape_relevant_syllabi(request.title, max_results=5)
+        
+        # Flatten and upsert top syllabi to AstraDB (user_syllabi collection)
+        all_texts = []
+        all_metadatas = []
+        for syllabus in syllabi[:3]:  # Top 3
+            if 'error' not in syllabus:
+                for section_key, chunks in syllabus.items():
+                    if isinstance(chunks, list):
+                        for chunk in chunks[:5]:  # Limit per section
+                            all_texts.append(chunk)
+                            all_metadatas.append({
+                                "course_title": request.title,
+                                "source_url": syllabus.get('source_url', ''),
+                                "source_title": syllabus.get('source_title', ''),
+                                "section": section_key,
+                                "type": "relevant_syllabus_chunk"
+                            })
+        
+        if all_texts:
+            astra_repo = AstraRepo("user_syllabi")
+            astra_repo.upsert_syllabus_chunks(all_texts, all_metadatas)
+        
+        return {
+            "status": "success",
+            "course_title": request.title,
+            "syllabi_found": len([s for s in syllabi if 'error' not in s]),
+            "total_chunks_stored": len(all_texts),
+            "syllabi": syllabi
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Scraping failed: {str(e)}")
+
 @router.post("/generate")
-async def generate_syllabus():
-    planner = PlannerAgent(neo4j_uri="bolt://localhost:7687", neo4j_user="neo4j", neo4j_password="password")
-    author = AuthorAgent(AstraVectorStore("course_chunks"), openai_api_key="your-openai-key")
-    reviewer = ReviewerAgent()
-    assembler = AssemblerAgent()
-
-    workflow = create_syllabus_workflow(planner, author, reviewer, assembler)
-    result = workflow(SyllabusState(syllabus=[], chapters={}, validated=False))
-
-    return {"status": "success", "syllabus": result.syllabus}
+async def generate_syllabus(request: SyllabusRequest):
+    agents = get_agents()
+    if not agents:
+        raise HTTPException(503, "Agents not initialised — server may still be starting up")
+    try:
+        topics = request.topics
+        # If title provided, could optionally scrape first (future enhancement)
+        if request.title:
+            print(f"Note: Title '{request.title}' provided - consider scraping first via /scrape endpoint")
+        
+        workflow = create_syllabus_workflow(
+            agents["planner"], agents["author"], agents["reviewer"], agents["assembler"]
+        )
+        invoke_data = {
+            "topics": topics,
+            "syllabus": [],
+            "chapters": {},
+            "validated": False
+        }
+        if request.title:
+            invoke_data["title"] = request.title
+        result = workflow.invoke(invoke_data)
+        return {"status": "success", "syllabus": result["syllabus"], "chapters": list(result["chapters"].keys())}
+    except Exception as e:
+        raise HTTPException(500, f"Syllabus generation failed: {str(e)}")

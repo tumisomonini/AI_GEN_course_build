@@ -149,15 +149,19 @@
         }
 
         function renderCurrentView() {
-            // Preview mode: render read-only summary
             const chaptersDiv = document.getElementById('chapters');
             if (!chaptersDiv || !courseData) return;
-            chaptersDiv.innerHTML = courseData.chapters.map((ch, i) => `
-                <div class="chapter">
-                    <strong>${i + 1}. ${ch.title}</strong>
-                    <p>${ch.description || ''}</p>
-                </div>
-            `).join('');
+            chaptersDiv.innerHTML = '';
+            courseData.chapters.forEach((ch, i) => {
+                const div = document.createElement('div');
+                div.className = 'chapter';
+                const title = document.createElement('strong');
+                title.textContent = `${i + 1}. ${ch.title}`;
+                const desc = document.createElement('p');
+                desc.textContent = ch.description || '';
+                div.append(title, desc);
+                chaptersDiv.appendChild(div);
+            });
         }
 
         async function loadCourseData() {
@@ -171,7 +175,7 @@
             isLoading = true;
             try {
                 updateLoadingUI('Loading course template...', 20);
-                const data = await fetchWithTimeout(`/api/v1/courses/${courseId}/course-review`);
+`/courses/${courseId}/course-review`
                 courseData = data.template;
                 scrapingResult = data.scraping_result;
                 displayCourseTemplate(data.metadata?.status || 'pending');
@@ -207,16 +211,22 @@
 
         function updateLoadingUI(message, progress, retryInfo) {
             const loadingDiv = document.getElementById('loading');
-            loadingDiv.innerHTML = `
-                <div style="text-align: center; padding: 30px;">
-                    <div class="loading-spinner" style="width: 40px; height: 40px; border-width: 4px;"></div>
-                    <p style="font-size: 18px; margin: 20px 0 10px 0;">${message}</p>
-                    <div style="width: 80%; max-width: 300px; margin: 15px auto; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
-                        <div style="width: ${progress}%; height: 8px; background: linear-gradient(90deg, #4caf50, #2196f3); transition: width 0.5s;"></div>
-                    </div>
-                    ${retryInfo ? `<p style="color: #ff9800; font-size: 14px;">${retryInfo}</p>` : ''}
-                </div>
-            `;
+            const safeMessage = document.createElement('p');
+            safeMessage.style.cssText = 'font-size: 18px; margin: 20px 0 10px 0;';
+            safeMessage.textContent = message;
+            const retryEl = document.createElement('p');
+            if (retryInfo) {
+                retryEl.style.cssText = 'color: #ff9800; font-size: 14px;';
+                retryEl.textContent = retryInfo;
+            }
+            loadingDiv.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'text-align: center; padding: 30px;';
+            wrapper.innerHTML = `<div class="loading-spinner" style="width: 40px; height: 40px; border-width: 4px;"></div>`;
+            wrapper.appendChild(safeMessage);
+            wrapper.innerHTML += `<div style="width: 80%; max-width: 300px; margin: 15px auto; background: #f0f0f0; border-radius: 10px; overflow: hidden;"><div style="width: ${progress}%; height: 8px; background: linear-gradient(90deg, #4caf50, #2196f3); transition: width 0.5s;"></div></div>`;
+            if (retryInfo) wrapper.appendChild(retryEl);
+            loadingDiv.appendChild(wrapper);
         }
 
         // removed fetchFromAPIWithRetry for clean polling behavior
@@ -380,7 +390,7 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
             let pollCount = 0;
             pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/v1/courses/${courseId}/course-review?bypass_cache=true`);
+`/courses/${courseId}/course-review?bypass_cache=true`
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
                     }
@@ -579,10 +589,10 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
 
             const chaptersDiv = document.getElementById('chapters');
             if (chaptersDiv) {
-                chaptersDiv.parentNode.insertBefore(prereqSection, chaptersDiv);
-                chaptersDiv.parentNode.insertBefore(objectivesSection, chaptersDiv);
-                chaptersDiv.parentNode.insertBefore(researchSection, chaptersDiv);
                 chaptersDiv.parentNode.insertBefore(summarySection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(researchSection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(objectivesSection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(prereqSection, chaptersDiv);
             }
 
             renderChapters();
@@ -633,16 +643,16 @@ function renderChapters() {
                     </div>
                     
                     <p style="color: #666; font-size: 14px; margin: 10px 0;">
-                        ${chapter.description || 'This chapter covers key concepts and practical skills related to ' + chapter.title.toLowerCase().replace('chapter ' + chapterNum + ': ', '')}
+                        ${chapter.description || ''}
                     </p>
                     
                     <div class="section">
                         <div class="section-header">
-                            <span class="section-title">📖 Units (${chapter.units.length})</span>
+                            <span class="section-title">📖 Units (${(chapter.units || []).length})</span>
                             <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'units')">➕ Add</button>
                         </div>
                         <ul class="item-list">
-                            ${chapter.units.map((unit, unitIndex) => `
+                            ${(chapter.units || []).map((unit, unitIndex) => `
                                 <li class="item">
                                     <input type="text" value="${unit}" onchange="updateItem(${chapterIndex}, 'units', ${unitIndex}, this.value)">
                                     <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'units', ${unitIndex})">🗑️</button>
@@ -653,11 +663,11 @@ function renderChapters() {
                     
                     <div class="section">
                         <div class="section-header">
-                            <span class="section-title">🧪 Labs (${chapter.labs.length})</span>
+                            <span class="section-title">🧪 Labs (${(chapter.labs || []).length})</span>
                             <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'labs')">➕ Add</button>
                         </div>
                         <ul class="item-list">
-                            ${chapter.labs.map((lab, labIndex) => `
+                            ${(chapter.labs || []).map((lab, labIndex) => `
                                 <li class="item">
                                     <input type="text" value="${lab}" onchange="updateItem(${chapterIndex}, 'labs', ${labIndex}, this.value)">
                                     <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'labs', ${labIndex})">🗑️</button>
@@ -668,11 +678,11 @@ function renderChapters() {
                     
                     <div class="section">
                         <div class="section-header">
-                            <span class="section-title">💪 Exercises (${chapter.exercises.length})</span>
+                            <span class="section-title">💪 Exercises (${(chapter.exercises || []).length})</span>
                             <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'exercises')">➕ Add</button>
                         </div>
                         <ul class="item-list">
-                            ${chapter.exercises.map((exercise, exerciseIndex) => `
+                            ${(chapter.exercises || []).map((exercise, exerciseIndex) => `
                                 <li class="item">
                                     <input type="text" value="${exercise}" onchange="updateItem(${chapterIndex}, 'exercises', ${exerciseIndex}, this.value)">
                                     <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'exercises', ${exerciseIndex})">🗑️</button>
@@ -813,7 +823,7 @@ function renderChapters() {
                 // Update progress
                 document.getElementById('live-progress').innerHTML = 'Sending approval request to server...';
                 
-                const response = await fetch(`/api/v1/courses/${courseId}/approve`, {
+`/courses/${courseId}/approve`
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -1017,10 +1027,8 @@ function renderChapters() {
                     `;
                 }
                 else if (['pending', 'processing', 'running', 'initiated', 'ready'].includes(result.status)) {
-                    // IMPROVED: Handle processing/pending states
+                    clearInterval(timerInterval);
                     updateProgress(2, `Status: ${result.status} - ${result.message || 'Processing...'}`, 30);
-
-                    // Start real polling for DB status updates
                     pollForContentUpdates();
                     
                     resultDiv.innerHTML = `

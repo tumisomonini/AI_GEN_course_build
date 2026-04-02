@@ -35,4 +35,5 @@ scipy==1.11.4
 tokenizers==0.15.0
 accelerate==0.24.1
 nltk>=3.9.0
+duckduckgo-search==8.1.1
 

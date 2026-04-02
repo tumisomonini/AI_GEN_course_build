@@ -78,14 +78,8 @@
         .continue-workflow { background: #e8f5e8; border: 2px solid #4CAF50; border-radius: 12px; padding: 25px; margin: 20px 0; text-align: center; }
         .continue-workflow button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin: 5px; }
 
-        @media (max-width: 700px) {
+        @media (max-width: 768px) {
             .form-row { grid-template-columns: 1fr; }
-            .container { padding: 20px; margin: 10px; }
-            #searchResults { grid-template-columns: 1fr; }
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) { 
             .container { padding: 20px; margin: 10px; }
             #searchResults { grid-template-columns: 1fr; }
             .search-box { max-width: none; }
@@ -174,7 +168,6 @@
     <script>
         let selectedLevel = 'beginner';
         let durationMonths = 3;
-        let searchTimeout;
 
         document.addEventListener('DOMContentLoaded', function() {
             const savedCourseId = localStorage.getItem('course_id');
@@ -183,13 +176,20 @@
                 document.getElementById('continueWorkflow').style.display = 'block';
             }
 
-            // Search existing courses as user types the topic
+            let searchTimeout;
+            let searchAbortController;
+
             document.getElementById('courseTitle').addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 const q = this.value.trim();
                 if (q.length >= 2) {
-                    searchTimeout = setTimeout(() => searchExisting(q), 500);
+                    searchTimeout = setTimeout(() => {
+                        if (searchAbortController) searchAbortController.abort();
+                        searchAbortController = new AbortController();
+                        searchExisting(q, searchAbortController.signal);
+                    }, 500);
                 } else {
+                    if (searchAbortController) searchAbortController.abort();
                     document.getElementById('existingSection').style.display = 'none';
                     document.getElementById('searchResults').innerHTML = '';
                 }
@@ -215,10 +215,10 @@
             document.getElementById('durIncrBtn').disabled = durationMonths === 12;
         }
 
-        async function searchExisting(query) {
+        async function searchExisting(query, signal) {
             try {
-                const res = await fetch(`/api/v1/search-courses?q=${encodeURIComponent(query)}`);
-                if (!res.ok) return;
+`/courses/search-courses?q=${encodeURIComponent(query)}`
+                if (!res.ok) throw new Error(`Search failed: ${res.status}`);
                 const data = await res.json();
                 const dbResults = (data.results || []).filter(r => r.course_id > 0);
                 if (dbResults.length === 0) {
@@ -226,23 +226,45 @@
                     return;
                 }
                 displayExisting(dbResults);
-            } catch (_) {}
+            } catch (err) {
+                if (err.name !== 'AbortError') console.error('Search error:', err);
+            }
+        }
+
+        function createCourseCard(c) {
+            const card = document.createElement('div');
+            card.className = 'course-card';
+
+            const title = document.createElement('h2');
+            title.className = 'course-title';
+            title.textContent = c.title;
+
+            const meta = document.createElement('div');
+            meta.className = 'course-meta';
+            [(c.level || 'N/A').toUpperCase(), `${c.duration_months || '?'} months`, c.status || 'draft'].forEach(text => {
+                const span = document.createElement('span');
+                span.className = 'meta-item';
+                span.textContent = text;
+                meta.appendChild(span);
+            });
+
+            const preview = document.createElement('p');
+            preview.className = 'course-preview';
+            preview.textContent = c.preview || '';
+
+            const btn = document.createElement('button');
+            btn.className = 'use-btn';
+            btn.textContent = '📖 Open Course';
+            btn.addEventListener('click', () => openExisting(c.course_id));
+
+            card.append(title, meta, preview, btn);
+            return card;
         }
 
         function displayExisting(results) {
             const container = document.getElementById('searchResults');
-            container.innerHTML = results.map(c => `
-                <div class="course-card">
-                    <h2 class="course-title">${c.title}</h2>
-                    <div class="course-meta">
-                        <span class="meta-item">${(c.level || 'N/A').toUpperCase()}</span>
-                        <span class="meta-item">${c.duration_months || '?'} months</span>
-                        <span class="meta-item">${c.status || 'draft'}</span>
-                    </div>
-                    <p class="course-preview">${c.preview || ''}</p>
-                    <button class="use-btn" onclick="openExisting(${c.course_id})">📖 Open Course</button>
-                </div>
-            `).join('');
+            container.innerHTML = '';
+            results.forEach(c => container.appendChild(createCourseCard(c)));
             document.getElementById('existingSection').style.display = 'block';
         }
 
@@ -252,26 +274,33 @@
         }
 
         async function generateCourse() {
-            const title = document.getElementById('courseTitle').value.trim();
+            const titleEl = document.getElementById('courseTitle');
+            const btn = document.getElementById('generateBtn');
+            const loadingEl = document.getElementById('loading');
+            const loadingMsg = document.getElementById('loadingMsg');
+
+            const title = titleEl.value.trim();
             if (!title) {
-                document.getElementById('courseTitle').focus();
-                document.getElementById('courseTitle').style.borderColor = '#f44336';
-                setTimeout(() => document.getElementById('courseTitle').style.borderColor = '', 2000);
+                titleEl.focus();
+                titleEl.style.borderColor = '#f44336';
+                setTimeout(() => { titleEl.style.borderColor = ''; }, 2000);
                 return;
             }
 
-            const btn = document.getElementById('generateBtn');
+            const generateAbortController = new AbortController();
+            const timeoutId = setTimeout(() => generateAbortController.abort(), 30000);
+
             btn.disabled = true;
             btn.textContent = '⏳ Generating...';
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('loadingMsg').textContent =
-                `Building "${title}" — ${selectedLevel}, ${durationMonths} month${durationMonths > 1 ? 's' : ''}...`;
+            loadingEl.style.display = 'block';
+            loadingMsg.textContent = `Building "${title}" — ${selectedLevel}, ${durationMonths} month${durationMonths > 1 ? 's' : ''}...`;
 
             try {
-                const res = await fetch('/api/v1/generate/course-template', {
+'/courses/generate/course-template'
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ title, level: selectedLevel, duration_months: durationMonths })
+                    body: JSON.stringify({ title, level: selectedLevel, duration_months: durationMonths }),
+                    signal: generateAbortController.signal
                 });
 
                 if (!res.ok) {
@@ -280,18 +309,20 @@
                 }
 
                 const result = await res.json();
+                const approvalId = result.approval_id || result.course_id;
                 const courseId = result.course_id || result.approval_id;
-                if (courseId) {
-                    localStorage.setItem('approval_id', courseId);
+                if (approvalId && courseId) {
+                    localStorage.setItem('approval_id', approvalId);
                     localStorage.setItem('course_id', courseId);
-                    window.location.href = `/Pages/approval_interface.html?course_id=${courseId}`;
+                    window.location.href = `/Pages/approval_interface.html?course_id=${approvalId}`;
                 } else {
                     throw new Error('No course ID returned from server');
                 }
             } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                alert('Generation failed: ' + error.message);
+                loadingEl.style.display = 'none';
+                alert(error.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Generation failed: ' + error.message);
             } finally {
+                clearTimeout(timeoutId);
                 btn.disabled = false;
                 btn.textContent = '🚀 Generate Course Template';
             }
