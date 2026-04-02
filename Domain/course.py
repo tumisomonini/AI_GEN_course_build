@@ -47,7 +47,13 @@ class CourseReviewResponse(BaseModel):
     template: CourseTemplate
     scraping_result: ScrapingResult = ScrapingResult()
     metadata: Dict[str, Any] = {}
-    status: Literal["draft", "approved", "generating", "completed", "published", "rejected"] = "draft"
+    status: Literal["draft", "approved", "generating", "completed"] = "draft"
+
+class CourseGenerateRequest(BaseModel):
+    topic: str
+    usep_ai: bool = False
+    max_time: int = 60
+
 
 class ApproveRequest(BaseModel):
     approved: bool
