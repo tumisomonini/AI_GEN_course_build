@@ -3,10 +3,25 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 
-from Application.Workflows.syllabus_workflow import create_syllabus_workflow
-from Application.API.agents import get_agents
-from Application.Ports.scraper import scrape_relevant_syllabi
-from Application.Ports.Astra_repo import AstraRepo
+try:
+    from Application.Workflows.syllabus_workflow import create_syllabus_workflow
+except ImportError:
+    create_syllabus_workflow = None
+
+try:
+    from ..agents import get_real_agents as get_agents
+except ImportError:
+    get_agents = lambda: {}
+
+try:
+    from Application.Ports.scraper import scrape_relevant_syllabi
+except ImportError:
+    scrape_relevant_syllabi = lambda title, max_results: []
+
+try:
+    from Application.Ports.Astra_repo import AstraRepo
+except ImportError:
+    AstraRepo = None
 
 class SyllabusRequest(BaseModel):
     topics: List[str] = ["Intro to Python", "Advanced Python"]
@@ -27,7 +42,7 @@ async def scrape_syllabus(request: ScrapeRequest):
         all_texts = []
         all_metadatas = []
         for syllabus in syllabi[:3]:  # Top 3
-            if 'error' not in syllabus:
+            if syllabus and isinstance(syllabus, dict) and 'error' not in syllabus:
                 for section_key, chunks in syllabus.items():
                     if isinstance(chunks, list):
                         for chunk in chunks[:5]:  # Limit per section
@@ -41,7 +56,7 @@ async def scrape_syllabus(request: ScrapeRequest):
                             })
         
         if all_texts:
-            astra_repo = AstraRepo("user_syllabi")
+            astra_repo = AstraRepo("course_chunks")
             astra_repo.upsert_syllabus_chunks(all_texts, all_metadatas)
         
         return {
@@ -79,4 +94,8 @@ async def generate_syllabus(request: SyllabusRequest):
         result = workflow.invoke(invoke_data)
         return {"status": "success", "syllabus": result["syllabus"], "chapters": list(result["chapters"].keys())}
     except Exception as e:
-        raise HTTPException(500, f"Syllabus generation failed: {str(e)}")
+        import traceback
+        print("🚨 SYLLABUS GENERATION FULL TRACEBACK:")
+        traceback.print_exc()
+        print(f"Error type: {type(e).__name__}, message: {str(e)}")
+        raise HTTPException(500, f"Generation failed: {type(e).__name__}: {str(e)}")

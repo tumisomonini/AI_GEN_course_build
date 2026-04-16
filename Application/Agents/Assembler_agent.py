@@ -1,18 +1,20 @@
 from typing import List, Dict
-from docx import Document
+from datetime import datetime
 
 class AssemblerAgent:
-    def __init__(self, mock_mode: bool = False):
-        self.mock_mode = mock_mode
+    def __init__(self):
+        pass
 
-    def export_to_docx(self, chapters: List[Dict[str, str]], filename: str):
-        if self.mock_mode:
-            print(f"Mock export: Would save {len(chapters)} chapters to {filename}")
-            return
-        
-        doc = Document()
-        doc.add_heading("Course Syllabus", level=1)
+    def export_to_markdown(self, chapters: List[Dict[str, str]], title: str = "AI Generated Course") -> str:
+        """Assemble chapters into a markdown string."""
+        lines = [f"# {title}", f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}*", ""]
         for chapter in chapters:
-            doc.add_heading(chapter["title"], level=2)
-            doc.add_paragraph(chapter["content"])
-        doc.save(filename)
+            lines.append(f"## {chapter['title']}")
+            lines.append(chapter.get('content', ''))
+            lines.append("")
+        return "\n".join(lines)
+
+    def export_to_docx(self, chapters: List[Dict[str, str]], filename: str = None) -> str:
+        """Placeholder for DOCX — currently returns markdown string."""
+        title = filename.replace('_', ' ').replace('.docx', '') if filename else "AI Generated Course"
+        return self.export_to_markdown(chapters, title)

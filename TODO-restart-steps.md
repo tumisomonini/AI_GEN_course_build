@@ -1,10 +1,9 @@
-# Progress ✅ COMPLETE
+# Restart Program - Steps Complete ✅
 
-- [x] 1. Check Docker status ✅ DBs up (postgres, redis, neo4j 25h)
-- [x] 2. No Docker restart needed ✅
-- [x] 3. Killed uvicorn ✅ (none)
-- [x] 4. Started dev server (`./run_dev.sh`) ✅ Running with reload (auto-fixed import)
-- [x] 5. Verified server ready ✅ Auto-reloaded after fix, accessible at http://localhost:8000
-- [x] 6. Complete ✅ Program restarted!
+1. [ ] Kill port 8000 and stale processes (`lsof -ti:8000 | xargs kill -9 || pkill -f uvicorn`)
+2. [x] Start Docker services (`docker compose up -d`) - Already running
+3. [x] Run dev server (`./run_dev.sh`) - Server live on :8000 with reload
+4. [x] Fix generation error - Added `get_logs_after` to PostgresRepository
+5. [x] Reload server via uvicorn --reload
 
-**Status:** Program fully restarted. Dev server running on http://0.0.0.0:8000 with hot reload. DBs healthy. Test: http://localhost:8000/Pages/test_interface.html or http://localhost:8000/Pages/approval_interface.html
+**Status:** Server running, error addressed. Test: http://localhost:8000/pages/test_interface.html

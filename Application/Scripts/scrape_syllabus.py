@@ -5,37 +5,32 @@ from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 from Application.Ports.scraper import parse_syllabus, scrape_relevant_syllabi
 from Application.Ports.Astra_repo import AstraRepo
+from Domain.syllabus import Syllabus
+from Domain.course import Course
 
-def scrape_and_structure(url: str = None, file_path: str = None, query: str = None) -> Dict[str, List[str]]:
+def scrape_and_structure(url: str = None, file_path: str = None, query: str = None) -> Syllabus:
     if query:
         syllabi = scrape_relevant_syllabi(query)
-        # Flatten top syllabus main_topics
-        top_syllabus = next((s for s in syllabi if 'error' not in s), {})
-        structured = top_syllabus if top_syllabus else {"main_topics": ["No syllabus found"]}
+        # Convert top syllabus to Domain model
+        top_syllabus = next((s for s in syllabi if not hasattr(s, 'issues') or not s.issues), None)
+        structured = top_syllabus if top_syllabus else Syllabus(title="No syllabus found", course=Course(title="Empty", audience="general", outcomes=[]), chapters=[])
     elif url:
         raw_syllabus = scrape_web_syllabus(url)
-        structured = parse_syllabus(raw_syllabus)
+        structured_dict = parse_syllabus(raw_syllabus)
+        structured = Syllabus.from_scraped_dict(structured_dict)
     elif file_path:
         raw_syllabus = scrape_pdf_syllabus(file_path)
-        structured = parse_syllabus(raw_syllabus)
+        structured_dict = parse_syllabus(raw_syllabus)
+        structured = Syllabus.from_scraped_dict(structured_dict)
     else:
         raise ValueError("Provide --url, --file, or --query")
-    print("Structured syllabus:", structured)
+    print("Structured Domain syllabus:", structured.model_dump())
     return structured
 
-def upsert_syllabus_chunks_to_astra(structured_syllabus: Dict[str, List[str]], source: str, collection_name: str = "syllabus_chunks"):
-    """Flatten structured syllabus to chunks and upsert to AstraDB"""
-    texts = []
-    metadatas = []
-    for section_key, chunks in structured_syllabus.items():
-        for chunk in chunks:
-            if chunk.strip():
-                texts.append(chunk)
-                metadatas.append({
-                    "source": source,
-                    "section": section_key,
-                    "type": "syllabus_chunk"
-                })
+def upsert_syllabus_chunks_to_astra(structured_syllabus: 'Syllabus', source: str, collection_name: str = "syllabus_chunks"):
+    """Upsert Domain Syllabus chapters to AstraDB"""
+    texts = [ch.content for ch in structured_syllabus.chapters if ch.content.strip()]
+    metadatas = [{"source": source, "section": ch.title, "type": "domain_syllabus_chunk"} for ch in structured_syllabus.chapters]
     
     if not texts:
         print("No valid chunks to upsert.")

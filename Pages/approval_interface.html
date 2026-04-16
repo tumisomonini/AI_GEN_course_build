@@ -123,7 +123,7 @@
     <script>
         // State
         const params = new URLSearchParams(window.location.search);
-        const courseId = parseInt(params.get('course_id') || localStorage.getItem('course_id') || '0');
+        const courseId = parseInt(params.get('course_id') || '0');
         let courseData = null;
         let scrapingResult = null;
         let viewMode = 'edit';
@@ -175,7 +175,9 @@
             isLoading = true;
             try {
                 updateLoadingUI('Loading course template...', 20);
-`/courses/${courseId}/course-review`
+                const response = await fetch(`/courses/${courseId}/course-review`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
                 courseData = data.template;
                 scrapingResult = data.scraping_result;
                 displayCourseTemplate(data.metadata?.status || 'pending');
@@ -235,7 +237,8 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             
             try {
-                const response = await fetch(url, { signal: controller.signal });
+                const res = await fetch(url, { signal: controller.signal });
+                const response = res;
                 clearTimeout(timeoutId);
                 
                 if (!response.ok) {
@@ -366,7 +369,7 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
                         <button onclick="showFallbackTemplate()" style="background: #4caf50; color: white; padding: 12px 25px; border-radius: 6px;">
                             📖 Load Saved Template
                         </button>
-                        <a href="/Pages/test_interface.html">
+                        <a href="/pages/test_interface.html">
                             <button style="background: #ff9800; color: white; padding: 12px 25px; border-radius: 6px;">
                                 🚀 Create New Course
                             </button>
@@ -390,16 +393,14 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
             let pollCount = 0;
             pollInterval = setInterval(async () => {
                 try {
-`/courses/${courseId}/course-review?bypass_cache=true`
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-
+                    const response = await fetch(`/courses/${courseId}/status`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const data = await response.json();
                     const metadata = data.metadata || {};
 
-                    const status = (data.status || metadata.status || 'pending').toLowerCase();
-                    const hasRealContent = metadata.has_real_content || !!data.sample_content;
+                    const metadata = data.metadata || {};
+                    const status = (data.status || 'pending').toLowerCase();
+                    const hasRealContent = false; // status-only endpoint, check on completed
 
                     let progress = 20;
                     if (status === 'initiated' || status === 'pending') progress = 25;
@@ -431,7 +432,7 @@ async function fetchWithTimeout(url, timeoutMs = 10000) {
                     clearInterval(pollInterval);
                     pollInterval = null;
                 }
-            }, 5000);  // real polling interval
+            }, 2000);
             
             // Stop polling after 3 minutes (optimized from 5 min)
             setTimeout(() => {
@@ -744,9 +745,9 @@ function renderChapters() {
 
         function goBackToStep1() {
             if (confirm('Go back to Step 1? You can generate a new course.')) {
-                localStorage.removeItem('approval_id');
-                localStorage.removeItem('course_id');
-                window.location.href = '/Pages/test_interface.html';
+                // Clear secure session
+                fetch('/session/clear', {method: 'POST'}).catch(e => console.log('Clear failed'));
+                window.location.href = '/pages/test_interface.html';
             }
         }
 
@@ -823,7 +824,7 @@ function renderChapters() {
                 // Update progress
                 document.getElementById('live-progress').innerHTML = 'Sending approval request to server...';
                 
-`/courses/${courseId}/approve`
+                const response = await fetch(`/courses/${courseId}/approve`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -936,7 +937,7 @@ function renderChapters() {
                     }
                     
                     // Save course_id to localStorage for workflow continuity
-                    localStorage.setItem('course_id', result.course_id);
+                    // Save to secure session (already set earlier)
                     
                     resultDiv.innerHTML = `
                         <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; border-left: 4px solid #4caf50;">
@@ -949,7 +950,7 @@ function renderChapters() {
                                 <div style="margin-bottom: 15px; font-size: 16px; color: #2e7d32;">
                                     ✅ <strong>Generation completed in ${Math.floor((Date.now() - startTime) / 1000)} seconds!</strong>
                                 </div>
-                                <a href="/Pages/course_review_interface.html?course_id=${result.course_id}">
+                                <a href="/pages/course_review_interface.html?course_id=${result.course_id}">
                                     <button class="approve" style="padding: 15px 30px; font-size: 16px; animation: bounce 1s infinite;">📖 View & Download Full Course →</button>
                                 </a>
                             </div>

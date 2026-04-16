@@ -1,10 +1,13 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from Application.Infrastructure.graphDb.neo4j_repo import Neo4jRepository
 from Application.Scripts.scrape_syllabus import scrape_and_structure
 
+_ENV = Path(__file__).resolve().parents[2] / '.env'
+
 def populate_neo4j(url: str = None, file_path: str = None):
-    load_dotenv()
+    load_dotenv(_ENV)
     neo4j_uri = os.getenv("NEO4J_URI")
     neo4j_user = os.getenv("NEO4J_USERNAME")
     neo4j_password = os.getenv("NEO4J_PASSWORD")
@@ -39,4 +42,20 @@ def populate_from_structured(repo: Neo4jRepository, structured_syllabus: dict):
             repo.add_prerequisite(section, sections[i - 1])
 
 if __name__ == "__main__":
-    populate_neo4j(url="https://example.edu/course-syllabus")
+    # Hardcoded sample AI course for testing
+    sample_syllabus = {
+        "Introduction to AI": [],
+        "Search Algorithms": ["Introduction to AI"],
+        "Knowledge Representation": ["Introduction to AI"],
+        "Machine Learning Basics": ["Search Algorithms"],
+        "Neural Networks": ["Machine Learning Basics"],
+        "Reinforcement Learning": ["Neural Networks", "Knowledge Representation"]
+    }
+    neo4j_uri = "bolt://localhost:7687"
+    neo4j_user = "neo4j"
+    neo4j_password = "password"
+    neo4j_database = "neo4j"
+    repo = Neo4jRepository(neo4j_uri, neo4j_user, neo4j_password, neo4j_database)
+    populate_from_structured(repo, sample_syllabus)
+    print("✅ Populated Neo4j with sample AI course KG")
+    repo.close()

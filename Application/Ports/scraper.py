@@ -1,11 +1,25 @@
-import requests
-from typing import Dict, Any, List
+from playwright.sync_api import sync_playwright
+
+from typing import TYPE_CHECKING, Dict, Any, List
 from bs4 import BeautifulSoup
 import re
-from duckduckgo_search import DDGS
+import json
+import os
+import redis
+from pathlib import Path
+from dotenv import load_dotenv
+try:
+    from ddgs import DDGS
+except ImportError:
+    DDGS = None
+
+load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 import concurrent.futures
+
+if TYPE_CHECKING:
+    from Domain.syllabus import Syllabus
 
 def scrape_technical_website(url: str) -> Dict[str, Any]:
     """
@@ -16,9 +30,17 @@ def scrape_technical_website(url: str) -> Dict[str, Any]:
         return {"error": "Wikipedia blocked - use technical sites like realpython, freecodecamp, docs"}
     
     try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            html_content = page.content()
+            browser.close()
+            
+        soup = BeautifulSoup(html_content, "html.parser")
         
         title = soup.find('title').get_text().strip() if soup.find('title') else "No title"
         desc = soup.find('meta', property='og:description') or soup.find('meta', name='description')
@@ -54,42 +76,66 @@ def scrape_technical_website(url: str) -> Dict[str, Any]:
     except Exception as e:
         return {"error": f"Scrape failed: {str(e)}", "url": url}
 
+# Lines that look like navigation/UI noise rather than course topics
+_JUNK_PATTERNS = re.compile(
+    r'^(\d+|[^a-zA-Z]+|.{0,4}|.{120,})$'  # too short, too long, or no letters
+    r'|(search|login|sign in|cookie|privacy|copyright|menu|navigation|home|contact|about us|cart|checkout|subscribe)',
+    re.IGNORECASE
+)
+
+def _is_valid_topic(line: str) -> bool:
+    """Return True only for lines that look like real course topic titles."""
+    line = line.strip()
+    # Check junk patterns and filter out common navigation text
+    if _JUNK_PATTERNS.search(line) or any(nav in line.lower() for nav in ["click here", "read more", "view all"]):
+        return False
+    # Must have at least 2 words or be a known topic pattern
+    words = line.split()
+    if len(words) < 2 and not re.match(r'^(week|module|unit|topic|chapter)\s*\d+', line.lower()):
+        return False
+    # Reject lines that are mostly digits/symbols
+    alpha_ratio = sum(c.isalpha() for c in line) / max(len(line), 1)
+    return alpha_ratio > 0.5
+
 def parse_syllabus(raw_syllabus: str) -> Dict[str, List[str]]:
     """
     Parse raw syllabus text into structured format with topics and subtopics
     """
     lines = [line.strip() for line in raw_syllabus.split('\n') if line.strip()]
-    
-    structured_syllabus = {
+
+    structured_syllabus: Dict[str, List[str]] = {
         "main_topics": [],
         "learning_objectives": [],
         "prerequisites": [],
         "assessment_methods": []
     }
-    
-    current_section = None
-    
+
     for line in lines:
-        # Detect section headers
         if re.match(r'^(week|module|unit|topic|chapter)\s*\d+', line.lower()):
             structured_syllabus["main_topics"].append(line)
-        elif any(keyword in line.lower() for keyword in ['learning objective', 'student will', 'upon completion']):
+        elif any(kw in line.lower() for kw in ['learning objective', 'student will', 'upon completion']):
             structured_syllabus["learning_objectives"].append(line)
-        elif any(keyword in line.lower() for keyword in ['prerequisite', 'requirement', 'background']):
+        elif any(kw in line.lower() for kw in ['prerequisite', 'requirement', 'background']):
             structured_syllabus["prerequisites"].append(line)
-        elif any(keyword in line.lower() for keyword in ['assessment', 'exam', 'quiz', 'assignment', 'grade']):
+        elif any(kw in line.lower() for kw in ['assessment', 'exam', 'quiz', 'assignment', 'grade']):
             structured_syllabus["assessment_methods"].append(line)
-        elif line and not line.startswith(('•', '-', '*')):
-            # Likely a main topic
+        elif _is_valid_topic(line):
             structured_syllabus["main_topics"].append(line)
-    
-    # Remove duplicates and clean up
+
+    # Deduplicate
     for key in structured_syllabus:
-        structured_syllabus[key] = list(set(structured_syllabus[key]))
-    
+        structured_syllabus[key] = list(dict.fromkeys(structured_syllabus[key]))
+
     return structured_syllabus
 
-def scrape_relevant_syllabi(course_title: str, max_results: int = 5) -> List[Dict[str, Any]]:
+# Initialize Redis client for caching
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+try:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception:
+    redis_client = None
+
+def scrape_relevant_syllabi(course_title: str, max_results: int = 3) -> List['Syllabus']:
     """
     Dynamic syllabus scraping based on course title/query.
     1. DDG search for syllabi
@@ -98,11 +144,28 @@ def scrape_relevant_syllabi(course_title: str, max_results: int = 5) -> List[Dic
     """
     syllabi = []
     
+    # 0. Check Cache
+    cache_key = f"scraper_cache:{course_title.lower().strip()}"
+    if redis_client:
+        try:
+            cached_data = redis_client.get(cache_key)
+            if cached_data:
+                print(f"🎯 Cache hit for '{course_title}'")
+                return json.loads(cached_data) if isinstance(cached_data, str) else cached_data
+        except Exception as e:
+            print(f"⚠️ Redis cache read failed: {e}")
+
     try:
-        # Search for syllabi: prioritize PDFs and edu sites
-        search_query = f'syllabus "{course_title}" filetype:pdf OR site:.edu OR site:.ac.uk'
-        with DDGS() as ddgs:
-            results = [r for r in ddgs.text(search_query, max_results=max_results)]
+        if DDGS is None:
+            print("⚠️ duckduckgo-search is not installed. Skipping search discovery.")
+            return [{'error': 'Search dependency missing. Run pip install duckduckgo-search', 'quality_score': 0}]
+
+        # Search for course outlines on learning platforms
+        search_query = f'{course_title} course syllabus topics outline'
+        # Fixed: Removed context manager to resolve DDGS deprecation warning
+        ddgs_instance = DDGS()
+        results = list(ddgs_instance.text(search_query, max_results=max_results))
+        
         def _process_result(result):
             url = result.get('href', '')
             source_title = result.get('title', 'Unknown')
@@ -112,23 +175,30 @@ def scrape_relevant_syllabi(course_title: str, max_results: int = 5) -> List[Dic
                 else:
                     raw_content = scrape_web_syllabus(url)
 
-                structured = parse_syllabus(raw_content)
-                structured['source_url'] = url
-                structured['source_title'] = source_title
-                structured['quality_score'] = len(structured.get('main_topics', [])) * 10 + len(structured.get('learning_objectives', [])) * 5
+                structured_dict = parse_syllabus(raw_content)
+                structured_dict['source_url'] = url
+                structured_dict['source_title'] = source_title
+                
+                # Enhanced scoring: reward specific educational structures
+                topic_count = len(structured_dict.get('main_topics', []))
+                obj_count = len(structured_dict.get('learning_objectives', []))
+                structured_dict['quality_score'] = (topic_count * 10) + (obj_count * 5)
+                structured = structured_dict
+                
             except Exception as scrape_err:
                 structured = {
+                    'error': str(scrape_err),
                     'source_url': url,
                     'source_title': source_title,
-                    'error': str(scrape_err),
                     'quality_score': 0
                 }
             return structured
 
-        max_workers = min(max_results, 10)
+        # Parallel Scraping: Use max_results as worker count to fetch all in parallel
+        max_workers = max_results
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(_process_result, result) for result in results]
-            for future in concurrent.futures.as_completed(futures):
+            for future in concurrent.futures.as_completed(futures, timeout=15):
                 try:
                     syllabi.append(future.result())
                 except Exception as e:
@@ -136,7 +206,16 @@ def scrape_relevant_syllabi(course_title: str, max_results: int = 5) -> List[Dic
         
         # Sort by quality descending
         syllabi.sort(key=lambda x: x.get('quality_score', 0), reverse=True)
-        return syllabi[:3]  # Top 3
+        final_results = syllabi[:3]
+
+        # 4. Save to Cache (TTL: 24 Hours)
+        if redis_client and final_results:
+            try:
+                redis_client.set(cache_key, json.dumps(final_results), ex=86400)
+            except Exception as e:
+                print(f"⚠️ Redis cache write failed: {e}")
+
+        return final_results
         
     except Exception as e:
         return [{'error': f'Search/scrape failed: {str(e)}', 'course_title': course_title}]

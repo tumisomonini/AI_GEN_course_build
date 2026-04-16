@@ -185,7 +185,9 @@
                         <button class="download-btn" onclick="downloadCourse('json')">📊 Download JSON</button>
                     </div>
                     <div style="margin-top: 20px;">
-                        <button class="download-btn" style="background: #17a2b8;" onclick="approveFinalCourse()">✅ Approve & Save Course</button>
+<button class="download-btn" id="approveFullBtn" onclick="approveAndGenFull()" style="background: #28a745; font-size: 18px;">✅ Approve & Generate Full Content</button>
+<p style="color: #666; font-size: 14px; margin-top: 10px;">(Full LLM ~2-5min, auto-refreshes)</p>
+<button class="download-btn" onclick="downloadCourse('markdown')" style="background: #6c757d;">📝 Download Outline MD</button>
                     </div>
                     
                     <!-- Workflow Navigation Buttons -->
@@ -207,19 +209,16 @@
 
         // Check for existing workflow and restore state
     document.addEventListener('DOMContentLoaded', function() {
-            const savedCourseId = localStorage.getItem('course_id');
-            const savedApprovalId = localStorage.getItem('approval_id');
-            
-            // Get course_id from URL or localStorage
+            // Get course_id from URL params only
             const urlParams = new URLSearchParams(window.location.search);
-            courseId = urlParams.get('course_id') || savedCourseId;
+            courseId = urlParams.get('course_id');
             
             if (!courseId) {
                 showError('No course ID provided. Please start from Step 1.');
                 // Add navigation buttons
                 document.getElementById('error').innerHTML += `
                     <div style="margin-top: 20px; text-align: center;">
-                        <a href="/Pages/test_interface.html">
+                        <a href="/pages/test_interface.html">
                             <button style="background: #1976d2; padding: 15px 30px; font-size: 16px;">← Start New Course (Step 1)</button>
                         </a>
                     </div>
@@ -235,10 +234,37 @@
 
         // Lightweight status polling — only fetches status string, not full content
         let pollInterval = null;
-        const POLL_INTERVAL = 2000;
+        const POLL_INTERVAL = 1500;
         const MAX_POLL_MS = 180000; // 3 minutes
         const TERMINAL_STATUSES = new Set(['completed', 'published', 'rejected']);
         let pollStartTime = null;
+
+        const STATUS_LABELS = {
+            pending: '⏳ Waiting to start...',
+            initiated: '🚀 Generation initiated...',
+            generating_full: '✍️ Writing course content...',
+            processing: '⚙️ Processing chapters...',
+            running: '⚙️ Running agents...',
+            ready: '🔍 Finalising content...',
+            completed: '✅ Done!',
+            published: '✅ Done!',
+            failed: '❌ Generation failed'
+        };
+
+        function updatePollingStatus(status) {
+            const loadingEl = document.getElementById('loading');
+            if (!loadingEl || loadingEl.style.display === 'none') return;
+            let msgEl = document.getElementById('poll-status-msg');
+            if (!msgEl) {
+                msgEl = document.createElement('p');
+                msgEl.id = 'poll-status-msg';
+                msgEl.style.cssText = 'color:#1976d2;font-size:15px;margin-top:8px;';
+                loadingEl.appendChild(msgEl);
+            }
+            const elapsed = Math.floor((Date.now() - pollStartTime) / 1000);
+            const label = STATUS_LABELS[status] || `Status: ${status}`;
+            msgEl.textContent = `${label} (${elapsed}s)`;
+        }
 
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
@@ -249,9 +275,10 @@
                     return;
                 }
                 try {
-`/courses/${courseId}/status`
+                    const res = await fetch(`/courses/${courseId}/status`);
                     if (!res.ok) return;
                     const { status } = await res.json();
+                    updatePollingStatus(status);
                     if (TERMINAL_STATUSES.has(status)) {
                         stopPolling();
                         if (status === 'completed' || status === 'published') {
@@ -313,8 +340,7 @@
 
         async function loadCourse() {
             try {
-                // Use the correct API endpoint with /api/v1 prefix
-`/courses/${courseId}/course-review`
+                const response = await fetch(`/courses/${courseId}/course-review`);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -334,7 +360,7 @@
                 // Add navigation buttons
                 document.getElementById('error').innerHTML += `
                     <div style="margin-top: 20px; text-align: center;">
-                        <a href="/Pages/test_interface.html">
+                        <a href="/pages/test_interface.html">
                             <button style="background: #1976d2; padding: 15px 30px; font-size: 16px;">← Start New Course (Step 1)</button>
                         </a>
                     </div>
@@ -366,18 +392,17 @@
             }
         }
 
-        function startNewCourse() {
-            if (confirm('Start a new course? This will clear the current workflow.')) {
-                localStorage.removeItem('approval_id');
-                localStorage.removeItem('course_id');
-                window.location.href = '/Pages/test_interface.html';
+            function startNewCourse() {
+                if (confirm('Start a new course? This will clear the current workflow.')) {
+                    fetch('/session/clear', {method: 'POST'}).catch(e => console.log('Clear failed'));
+                    window.location.href = '/pages/test_interface.html';
+                }
             }
-        }
 
         function goBackToStep2() {
             const courseId = localStorage.getItem('course_id') || localStorage.getItem('approval_id');
             if (courseId) {
-                window.location.href = `/Pages/approval_interface.html?course_id=${courseId}`;
+                window.location.href = `/pages/approval_interface.html?course_id=${courseId}`;
             } else {
                 alert('Cannot go back - no course ID found. Please start a new course.');
             }
@@ -567,8 +592,7 @@
 
         async function downloadCourse(format) {
             try {
-                // Use correct API path with /api/v1 prefix
-`/courses/${courseId}/download?format=${format}`
+                const response = await fetch(`/courses/${courseId}/download?format=${format}`, {
                     method: 'GET',
                     headers: {'Content-Type': 'application/json'}
                 });
@@ -627,39 +651,38 @@ ${content}
             }
         }
 
-        async function approveFinalCourse() {
-            if (!confirm('Approve and save this course? This will finalize the course for future use.')) {
-                return;
-            }
-            
-            try {
-                // Use correct API path with /api/v1 prefix
-`/courses/${courseId}/final-approve`
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({approved: true})
-                });
-                
-                const result = await response.json();
-                
-                if (result.status === 'approved_and_saved') {
-                    alert('🎉 Course approved and saved successfully!');
-                    // Update UI to show approved state
-                    document.querySelector('.download-section').innerHTML = `
-                        <div style="background: #d4edda; padding: 20px; border-radius: 8px; text-align: center;">
-                            <h3 style="color: #155724; margin: 0 0 10px 0;">✅ Course Approved!</h3>
-                            <p style="color: #155724; margin: 0;">Approved at: ${new Date(result.approved_at).toLocaleString()}</p>
-                        </div>
-                    `;
-                } else {
-                    alert('Approval failed: ' + (result.message || 'Unknown error'));
-                }
-                
-            } catch (error) {
-                console.error('Approval error:', error);
-                alert('Approval failed: ' + error.message);
-            }
-        }
+async function approveAndGenFull() {
+    if (!confirm('Approve template and generate full content? (~2-5min)')) return;
+    
+    const btn = document.getElementById('approveFullBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating Full Content...';
+    
+    try {
+        const response = await fetch(`/courses/${courseId}/approve-full`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) throw new Error('Approval failed');
+        
+        const result = await response.json();
+        alert(result.message);
+        
+        // Start/restart polling for full content
+        startPolling();
+        document.getElementById('approveFullBtn').style.display = 'none';
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = '✅ Approve & Generate Full Content';
+    }
+}
+
+async function approveFinalCourse() {
+    // Legacy - redirect to new approveAndGenFull
+    approveAndGenFull();
+}
 
         function showError(message) {
             document.getElementById('loading').style.display = 'none';

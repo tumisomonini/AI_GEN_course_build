@@ -2,9 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+RUN adduser --disabled-password --gecos "" appuser
+
+COPY Application/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["uvicorn", "Application.API.Main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "Application", "--reload-dir", "Domain"]
+RUN chown -R appuser:appuser /app
+USER appuser
+
+CMD ["uvicorn", "Application.API.Main:app", "--host", "0.0.0.0", "--port", "8000"]

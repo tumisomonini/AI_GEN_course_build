@@ -45,10 +45,40 @@ class TestCoursesEndpoints:
         assert "course_id" in data
         assert data["sources_found"] >= 0
 
+    def test_generate_short_title_fails(self):
+        """Test validation for short title"""
+        payload = {"title": "ab", "level": "beginner", "duration_months": 2}
+        response = client.post("/courses/generate/course-template", json=payload)
+        assert response.status_code in [400, 422]
+
+    def test_generate_no_title_fails(self):
+        """Test no title validation"""
+        payload = {"level": "beginner", "duration_months": 2}
+        response = client.post("/courses/generate/course-template", json=payload)
+        assert response.status_code in [400, 422]
+
+    def test_generate_invalid_duration_fails(self):
+        """Test invalid duration validation"""
+        payload = {"title": "Test Course", "level": "beginner", "duration_months": 0}
+        response = client.post("/courses/generate/course-template", json=payload)
+        assert response.status_code in [400, 422]
+
+    def test_generate_invalid_level_fails(self):
+        """Test invalid level validation"""
+        payload = {"title": "Test Course", "level": "expert", "duration_months": 2}
+        response = client.post("/courses/generate/course-template", json=payload)
+        assert response.status_code == 422
+
     def test_get_course_review(self, test_repo):
         """Test getting course review after creation"""
-        # First create a test course
-        course_id = test_repo.create_course("Test Review Course", "intermediate")
+        # First create a test course template
+        template_payload = {
+            "title": "Test Review Course",
+            "level": "intermediate",
+            "duration_months": 3
+        }
+        create_response = client.post("/courses/generate/course-template", json=template_payload)
+        course_id = create_response.json()["course_id"]
         
         response = client.get(f"/courses/{course_id}/course-review")
         assert response.status_code == 200
@@ -87,7 +117,7 @@ def test_root_redirect():
     """Test root endpoint redirects to test interface"""
     response = client.get("/")
     assert response.status_code == 200
-    assert "RedirectResponse" in str(response.json())
+    assert response.url.path == "/pages/test_interface.html" or "/pages/" in response.text
 
 print("API endpoint tests completed!")
 

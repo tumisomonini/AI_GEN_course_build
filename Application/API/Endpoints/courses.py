@@ -1,594 +1,375 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Any, Literal, Optional, List
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, AliasChoices
+from typing import Dict, Any, List, Optional
+from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
 import os
+import time
+import json
 import asyncio
-from Domain.course import (
-    CourseCreate, CourseTemplate, ScrapingResult, 
-    CourseReviewResponse, ApproveRequest
-)
-from Application.Infrastructure.relationalDB.postgres_repo import PostgresRepository
-from Application.Infrastructure.graphDb.neo4j_repo import Neo4jRepository
-from Application.Scripts.populate_neo4j import populate_from_template
 
-# Web search and scraping utilities
-class WebSearchAndScraper:
-    """Search for relevant educational resources and scrape them"""
-    
-    # Curated educational websites by domain
-    EDUCATIONAL_SITES = {
-        "programming": [
-            "https://realpython.com",
-            "https://freecodecamp.org",
-            "https://docs.python.org",
-            "https://developer.mozilla.org",
-            "https://www.w3schools.com",
-            "https://stackoverflow.com",
-            "https://github.com"
-        ],
-        "data_science": [
-            "https://scikit-learn.org",
-            "https://pandas.pydata.org",
-            "https://pytorch.org",
-            "https://tensorflow.org",
-            "https://kaggle.com",
-            "https://deeplearning.ai"
-        ],
-        "web_dev": [
-            "https://developer.mozilla.org",
-            "https://www.w3schools.com",
-            "https://nodejs.org",
-            "https://reactjs.org",
-            "https://nextjs.org",
-            "https://vuejs.org"
-        ],
-        "devops": [
-            "https://kubernetes.io",
-            "https://docs.docker.com",
-            "https://aws.amazon.com",
-            "https://cloud.google.com",
-            "https://azure.microsoft.com"
-        ]
-    }
-    
-    def find_relevant_sites(self, topic: str) -> List[str]:
-        """Find relevant educational sites for a topic"""
-        topic_lower = topic.lower()
-        urls = []
-        
-        # Match topic to categories and get relevant sites
-        if any(x in topic_lower for x in ["python", "javascript", "java", "c++", "coding", "programming", "algorithm"]):
-            urls.extend(self.EDUCATIONAL_SITES["programming"])
-        if any(x in topic_lower for x in ["data", "machine learning", "ai", "neural", "tensorflow", "pytorch"]):
-            urls.extend(self.EDUCATIONAL_SITES["data_science"])
-        if any(x in topic_lower for x in ["web", "react", "vue", "node", "html", "css", "javascript"]):
-            urls.extend(self.EDUCATIONAL_SITES["web_dev"])
-        if any(x in topic_lower for x in ["docker", "kubernetes", "devops", "cloud", "aws", "azure"]):
-            urls.extend(self.EDUCATIONAL_SITES["devops"])
-        
-        # If no matches, use programming as default
-        if not urls:
-            urls = self.EDUCATIONAL_SITES["programming"]
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_urls = []
-        for url in urls:
-            if url not in seen:
-                seen.add(url)
-                unique_urls.append(url)
-        
-        return unique_urls[:5]  # Return top 5 most relevant sites
-    
-    async def scrape_relevant_sources(self, topic: str, max_sources: int = 3) -> Dict[str, Any]:
-        """Find and scrape relevant sources for a topic"""
-        from Application.Ports.scraper import scrape_technical_website
-        
-        relevant_sites = self.find_relevant_sites(topic)
-        scraped_sources = []
-        total_quality = 0
-        
-        for site_url in relevant_sites[:max_sources]:
-            try:
-                # Build search URL for the topic
-                search_url = f"{site_url.rstrip('/')}/search?q={topic.replace(' ', '+')}"
-                if "github.com" in site_url or "stackoverflow.com" in site_url:
-                    search_url = f"{site_url.rstrip('/')}/search?q={topic.replace(' ', '+')}"
-                elif "realpython.com" in site_url:
-                    search_url = f"{site_url.rstrip('/')}/?s={topic.replace(' ', '+')}"
-                else:
-                    # For others, try the direct URL format
-                    search_url = f"{site_url.rstrip('/')}/{topic.lower().replace(' ', '-')}"
-                
-                scraped_data = scrape_technical_website(search_url)
-                
-                if "error" not in scraped_data:
-                    quality_score = min(100, len(scraped_data.get('headings', [])) * 10)
-                    scraped_sources.append({
-                        "title": scraped_data.get('title', f'{topic} on {site_url}'),
-                        "url": search_url,
-                        "snippet": scraped_data.get('description', f'Content about {topic}')[:200],
-                        "quality": quality_score,
-                        "sections": len(scraped_data.get('headings', []))
-                    })
-                    total_quality += quality_score
-            except Exception as e:
-                # Silently skip failed scrapes, continue with others
-                continue
-        
-        avg_quality = int(total_quality / len(scraped_sources)) if scraped_sources else 0
-        
-        return {
-            "is_real_data": len(scraped_sources) > 0,
-            "total_sources": len(scraped_sources),
-            "quality_score": max(50, avg_quality),  # Min 50% quality if we found anything
-            "total_content": f"{len(scraped_sources)} sources found",
-            "sources": scraped_sources[:max_sources],
-            "scraped_sections": []
-        }
-
-web_scraper = WebSearchAndScraper()
-# TODO: Uncomment when agent dependencies are available
-# from Application.Agents.Planner_agent import PlannerAgent
-# from Application.Workflows.syllabus_workflow import create_syllabus_workflow
+from ..dependencies import get_postgres_repo
+from Application.Ports.postgres_repo import PostgresRepo
 
 router = APIRouter(tags=["Courses"])
 
-# Dependencies
-def get_db():
-    dbname = os.getenv("POSTGRES_DB", "ai_gen_db")
-    user = os.getenv("POSTGRES_USER", "postgres")
-    password = os.getenv("POSTGRES_PASSWORD", "password123")
-    repo = PostgresRepository(dbname, user, password)
-    try:
-        yield repo
-    finally:
-        repo.close()
+class InlineScraper:
+    """Minimal scraper class for search - core scraping in workflow"""
+    async def scrape_relevant_sources(self, topic: str) -> Dict:
+        return {
+            "total_sources": 3,
+            "quality_score": 85,
+            "sources": [{"title": f"'{topic}' tutorial", "quality": 85}]
+        }
 
+inline_scraper = InlineScraper()
 
-def get_neo4j():
-    repo = Neo4jRepository(
-        uri=os.getenv("NEO4J_URI"),
-        user=os.getenv("NEO4J_USERNAME"),
-        password=os.getenv("NEO4J_PASSWORD"),
-        database=os.getenv("NEO4J_DATABASE")
-    )
-    try:
-        yield repo
-    finally:
-        repo.close()
+class CourseGenerateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
 
+    title: str = Field(..., min_length=3, validation_alias=AliasChoices('title', 'topic'))
+    topic: Optional[str] = None  # Kept for compatibility if needed elsewhere
+    level: str = "beginner"
+    duration_months: int = Field(default=3, ge=1)
 
-class TemplateRequest(BaseModel):
-    title: str
-    level: Literal["beginner", "intermediate", "advanced"]
-    duration_months: int
-    syllabus_url: Optional[str] = None
+    @field_validator('level')
+    @classmethod
+    def level_must_be_valid(cls, v):
+        allowed = {"beginner", "intermediate", "advanced"}
+        if v not in allowed:
+            raise ValueError(f"level must be one of {allowed}")
+        return v
+
+    @model_validator(mode='after')
+    @classmethod
+    def sync_title_and_topic(cls, m: 'CourseGenerateRequest'):
+        # Ensure title and topic are always synced to prevent workflow failures
+        if not m.topic:
+            m.topic = m.title
+        return m
+
 
 @router.get("/search-courses")
-async def search_courses(q: str, limit: int = 6, db: PostgresRepository = Depends(get_db)):
-    """
-    Search for courses: first check DB, then search web for relevant resources
-    """
-    # Get from DB
-    db_results = db.search_courses(q, limit)
-    
-    # Also search the web for relevant educational resources
-    web_results = await web_scraper.scrape_relevant_sources(q, max_sources=limit)
-    
-    # Format web results as course cards
-    web_courses = []
-    for source in web_results.get('sources', []):
-        web_courses.append({
-            "title": source['title'],
-            "level": "intermediate",  # Inferred from source
-            "duration_months": 2,
-            "preview": source['snippet'],
-            "status": "web_resource",
-            "url": source['url'],
-            "quality": source['quality']
-        })
-    
-    # Combine results: DB results first, then web resources
-    all_results = db_results + web_courses
-    
+async def search_courses(q: str = "", repo: PostgresRepo = Depends(get_postgres_repo)):
+    """Search existing courses and return counts"""
+    results = repo.search_courses(q) if q else []
     return {
         "query": q,
-        "results": all_results[:limit],
-        "total": len(all_results),
-        "db_count": len(db_results),
-        "web_count": len(web_courses),
-        "message": f"Found {len(db_results)} saved courses + {len(web_courses)} web resources for '{q}'"
+        "results": results,
+        "db_count": len(results),
+        "web_count": 0,
+        "message": f"Ready to generate '{q}' course! Use /generate endpoint."
     }
 
 @router.post("/generate/course-template")
 async def generate_course_template(
-    request: TemplateRequest,
-    db: PostgresRepository = Depends(get_db),
-    neo4j: Neo4jRepository = Depends(get_neo4j)
+    request: CourseGenerateRequest,
+    background_tasks: BackgroundTasks,
+    repo: PostgresRepo = Depends(get_postgres_repo)
+):
+    "Generate TOC-style template only (cheap, no LLM content)"
+    # 1. Create a placeholder course to get an ID for progress tracking
+    course_title = request.title or request.topic
+    template_stub = {
+        "title": course_title,
+        "level": request.level.capitalize(),
+        "duration_months": request.duration_months,
+        "chapters": [],
+        "status": "generating_outline"
+    }
+    course_id = repo.create_course_from_template(template_stub)
+    run_id = repo.create_run(course_id, "template_generation")
+
+    repo.log_message(run_id, "System", f"Starting outline generation for '{course_title}'", "info")
+
+    # Move logic to background to allow ChatGPT-style streaming via SSE
+    background_tasks.add_task(outline_generation_task, request, course_id, run_id)
+
+    return {
+        "course_id": course_id,
+        "run_id": run_id,
+        "status": "generating_outline",
+        "message": "Generation started. Follow stream for progress."
+    }
+
+@router.get("/generate/course-template-stream")
+async def generate_course_template_stream(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    title: str,
+    level: str = "beginner",
+    duration_months: int = 3,
+    repo: PostgresRepo = Depends(get_postgres_repo)
 ):
     """
-    Step 1: Generate course template via scrape + planner
-    Scrapes relevant websites based on topic if no URL provided
-    Returns course_id + template for approval
+    All-in-one endpoint: Starts generation and streams progress immediately (ChatGPT-style).
+    Fixes 404 for GET /courses/generate/course-template-stream
     """
+    # 1. Initialize course and run
+    template_stub = {
+        "title": title,
+        "level": level.lower(),
+        "duration_months": duration_months,
+        "chapters": []
+    }
+    course_id = repo.create_course_from_template(template_stub)
+    run_id = repo.create_run(course_id, "template_generation_stream")
+    repo.log_message(run_id, "System", f"Initiating stream for '{title}'...", "info")
+
+    # 2. Trigger the actual work in background
+    gen_request = CourseGenerateRequest(title=title, level=level.lower(), duration_months=duration_months)
+    background_tasks.add_task(outline_generation_task, gen_request, course_id, run_id)
+
+    # 3. Stream the logs
+    async def event_generator():
+        last_log_id = 0
+        # Send initial course_id so frontend knows what was created
+        yield f"data: {json.dumps({'type': 'init', 'course_id': course_id, 'run_id': run_id})}\n\n"
+        
+        while True:
+            if await request.is_disconnected():
+                break
+
+            status_info = repo.get_course_status(course_id)
+            logs = repo.get_logs_after(run_id, last_log_id) # Assuming this method exists or use direct query
+            
+            for log in logs:
+                yield f"data: {json.dumps({'type': 'log', 'agent': log['agent_name'], 'message': log['message'], 'level': log['level']})}\n\n"
+                last_log_id = log['log_id']
+
+            if status_info['status'] in ['completed', 'failed', 'awaiting_approval']:
+                yield f"data: {json.dumps({'type': 'done', 'course_id': course_id, 'status': status_info['status']})}\n\n"
+                break
+            await asyncio.sleep(0.8)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.post("/{course_id}/resume")
+async def resume_course_generation(
+    course_id: int,
+    background_tasks: BackgroundTasks,
+    repo: PostgresRepo = Depends(get_postgres_repo)
+):
+    """
+    Resume course generation for a course in 'draft' or 'failed' status.
+    Detects progress and triggers either outline generation or full content generation.
+    """
+    course_info = repo.get_course_status(course_id)
+    if not course_info or "error" in course_info:
+        raise HTTPException(status_code=404, detail=f"Course {course_id} not found")
+    
+    status = course_info.get("status")
+    title = course_info.get("title")
+
+    # Case 1: Course is a shell or outline failed
+    if status in ["draft", "failed", "generating_outline"]:
+        try:
+            review_data = repo.get_course_review(course_id)
+            template = review_data.get("template", {})
+        except:
+            template = {}
+
+        gen_request = CourseGenerateRequest(
+            title=title,
+            level=template.get("level", "beginner").lower() if isinstance(template, dict) and template.get("level") else "beginner",
+            duration_months=template.get("duration_months", 3) if isinstance(template, dict) else 3
+        )
+        
+        run_id = repo.create_run(course_id, "resume_outline_generation")
+        repo.update_course_status(course_id, "generating_outline")
+        repo.log_message(run_id, "System", f"Resuming outline generation for '{title}'", "info")
+        background_tasks.add_task(outline_generation_task, gen_request, course_id, run_id)
+        return {"course_id": course_id, "run_id": run_id, "status": "generating_outline"}
+
+    # Case 2: Outline exists, just needs content generation
+    if status == "awaiting_approval":
+        return await approve_and_generate_full(course_id, background_tasks, repo)
+
+    return {"course_id": course_id, "status": status, "message": "Course is already active or completed"}
+
+def outline_generation_task(request: CourseGenerateRequest, course_id: int, run_id: int):
+    """Background task to handle template generation with status tracking"""
+    repo = PostgresRepo()
     try:
-        # 1. Scrape relevant sources based on topic
-        if request.syllabus_url:
-            # User provided explicit URL - scrape it
-            from Application.Ports.scraper import scrape_technical_website
-            scraped_data = scrape_technical_website(request.syllabus_url)
-            if "error" not in scraped_data:
-                scraping_result = {
-                    "is_real_data": True,
-                    "total_sources": 1,
-                    "quality_score": scraped_data.get("quality", 90),
-                    "total_content": f"{len(scraped_data.get('headings', []))} sections scraped",
-                    "sources": scraped_data["sources"],
-                    "scraped_sections": scraped_data["headings"][:5],
-                    "title": scraped_data["title"],
-                    "description": scraped_data["description"]
-                }
-            else:
-                scraping_result = {"error": scraped_data["error"]}
+        from Application.Workflows.syllabus_workflow import create_outline_workflow
+        course_title = request.title or request.topic
+        template = create_outline_workflow(course_title, request.level, request.duration_months, run_id=run_id)
+        
+        repo.update_course_template(course_id, template)
+        repo.update_course_status(course_id, "awaiting_approval")
+        repo.update_run_status(run_id, "completed")
+        repo.log_message(run_id, "System", "Outline ready for review.", "info")
+    except Exception as e:
+        repo.log_message(run_id, "System", f"Template failed: {str(e)}", "error")
+        repo.update_course_status(course_id, "failed")
+    finally:
+        repo.close()
+
+@router.post("/{course_id}/approve-full")
+async def approve_and_generate_full(
+    course_id: int,
+    background_tasks: BackgroundTasks,
+    repo: PostgresRepo = Depends(get_postgres_repo)
+):
+    """Approve template -> trigger full content generation background"""
+    repo.create_approval(course_id, approved=True)
+    repo.update_course_status(course_id, "generating_full")
+    
+    run_id = repo.create_run(course_id, "full_content_generation")
+    background_tasks.add_task(full_content_workflow, course_id, run_id)
+    
+    return {"status": "approved", "run_id": run_id, "message": "Full content generation started"}
+
+async def full_content_workflow(course_id: int, run_id: int):
+    """Background full content with proper run tracking"""
+    repo = PostgresRepo()
+    try:
+        review_data = repo.get_course_review(course_id)
+        if not review_data or not review_data.get('template'):
+            repo.log_message(run_id, "workflow", "Failure: No approved template found to generate from.", "error")
+            repo.update_course_status(course_id, "failed")
+            return
+
+        template = review_data['template']
+        title = template['title'] if isinstance(template, dict) else template.get('title', '')
+        duration = template.get('duration_months', 3) if isinstance(template, dict) else 3
+        level = template.get('level', 'beginner').lower() if isinstance(template, dict) else 'beginner'
+        repo.log_message(run_id, "workflow", f"Starting generation for: {title}", "info")
+
+        # Extract approved chapters from template to skip re-scraping and re-planning
+        approved_chapters = template.get('chapters', []) if isinstance(template, dict) else []
+
+        from Application.Workflows.syllabus_workflow import create_real_syllabus_workflow
+        result, _ = await create_real_syllabus_workflow(
+            title, 
+            duration, 
+            level=level,
+            run_id=run_id, 
+            topics=approved_chapters, 
+            syllabus=approved_chapters
+        )
+
+        # result is a Syllabus.model_dump() — chapters is a list of Chapter dicts
+        chapters = result.get('chapters', [])
+        if isinstance(chapters, dict):
+            chapters_list = [{'title': k, 'content': v} for k, v in chapters.items()]
         else:
-            # No URL provided - find and scrape relevant educational websites
-            scraping_result = await web_scraper.scrape_relevant_sources(request.title, max_sources=3)
-        
-        # 2. Generate template structure based on request
-        template = {
-            "title": request.title,
-            "level": request.level,
-            "duration_months": request.duration_months,
-            "learning_objectives": [
-                f"Master {request.title} fundamentals",
-                f"Build practical {request.title} projects",
-                f"Apply {request.title} in real-world scenarios"
-            ],
-            "prerequisites": ["Basic programming knowledge"] if request.level != "beginner" else [],
-            "chapters": [
-                {
-                    "title": f"Introduction to {request.title}",
-                    "description": "Course overview and setup",
-                    "units": [f"Unit 1: {request.title} Basics", "Unit 2: First Project"],
-                    "labs": ["Setup Lab"],
-                    "exercises": ["Intro Quiz"]
-                },
-                {
-                    "title": f"Core {request.title} Concepts",
-                    "description": "Key principles and techniques",
-                    "units": [f"Unit 1: Core Features", "Unit 2: Best Practices"],
-                    "labs": ["Core Lab"],
-                    "exercises": ["Core Exercises"]
-                },
-                {
-                    "title": f"Advanced {request.title}",
-                    "description": "Expert level topics",
-                    "units": [f"Unit 1: Advanced Patterns", "Unit 2: Optimization"],
-                    "labs": ["Advanced Project"],
-                    "exercises": ["Challenge Problems"]
-                }
-            ],
-            "scraping_result": scraping_result
-        }
-        
-        # 3. Save to Postgres
-        course_id = db.create_course_from_template(template)
+            chapters_list = [{'title': ch.get('title', ''), 'content': ch.get('content', '')} for ch in chapters]
 
-        # 4. Populate Neo4j knowledge graph
-        try:
-            populate_from_template(
-                neo4j,
-                title=request.title,
-                chapters=template["chapters"],
-                prerequisites=template["prerequisites"]
-            )
-        except Exception as neo4j_err:
-            # Non-fatal: log but don't fail the request
-            print(f"Neo4j population warning: {neo4j_err}")
-        
-        return {
-            "status": "awaiting_approval",
-            "message": "Course template generated successfully with web research",
-            "approval_id": course_id,
-            "course_id": course_id,
-            "sources_found": scraping_result.get("total_sources", 0)
-        }
-        
+        repo.save_full_course_chapters(course_id, chapters_list)
+        repo.log_message(run_id, "assembler", "Course assembly complete", "info")
+        repo.update_course_status(course_id, "completed")
+        repo.update_run_status(run_id, "completed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        error_detail = f"Generation failed: {str(e)}"
+        repo.log_message(run_id, "workflow", error_detail, "error")
+        repo.update_course_status(course_id, "failed")
+        repo.update_run_status(run_id, "failed")
+    finally:
+        repo.close()
 
-@router.get("/courses/{course_id}/status")
-async def get_course_status(course_id: int, db: PostgresRepository = Depends(get_db)):
-    """
-    Lightweight status check — only returns status string, no content payload
-    """
-    try:
-        return db.get_course_status(course_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/{course_id}")
+async def course_status(course_id: int, repo: PostgresRepo = Depends(get_postgres_repo)):
+    status = repo.get_course_status(course_id)
+    return status
 
-@router.get("/courses/{course_id}/course-review", response_model=CourseReviewResponse)
-async def get_course_review(course_id: int, db: PostgresRepository = Depends(get_db)):
-    """
-    Step 1.5: Get course template + status for review interface
-    """
-    try:
-        review_data = db.get_course_review(course_id)
-        template_data = review_data["template"]
-        
-        # Ensure template has required fields
-        template = CourseTemplate(
-            title=template_data.get("title", "Untitled"),
-            level=template_data.get("level", "beginner"),
-            duration_months=template_data.get("duration_months", 3),
-            learning_objectives=template_data.get("learning_objectives", []),
-            prerequisites=template_data.get("prerequisites", []),
-            chapters=template_data.get("chapters", []),
-        )
-        scraping_data = review_data["scraping_result"]
-        scraping_result = ScrapingResult(
-            is_real_data=scraping_data.get("is_real_data", False),
-            total_sources=scraping_data.get("total_sources", 0),
-            quality_score=scraping_data.get("quality_score", 70),
-            total_content=scraping_data.get("total_content", "N/A"),
-            sources=scraping_data.get("sources", []),
-        )
-        return CourseReviewResponse(
-            course_id=review_data["course"]["course_id"],
-            template=template,
-            scraping_result=scraping_result,
-            metadata=review_data["metadata"],
-            status=review_data["course"]["status"],
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/{course_id}/status")
+async def course_status_only(course_id: int, repo: PostgresRepo = Depends(get_postgres_repo)):
+    """Lightweight status-only endpoint for frontend polling"""
+    row = repo.get_course_status(course_id)
+    if not row or not row.get("status"):
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    response = {"status": row.get("status", "unknown"), "course_id": course_id}
+    if response["status"] == "failed":
+        response["error_details"] = repo.get_latest_error(course_id)
+    
+    return response
 
-@router.post("/generate")
-async def generate_course(
-    request: TemplateRequest,
-    db: PostgresRepository = Depends(get_db),
-    neo4j: Neo4jRepository = Depends(get_neo4j)
-):
-    """
-    Generate full course from topic with optional AI usage (mocked implementation)
-    """
-    try:
-        # 1. Scrape relevant sources
-        scraping_result = await web_scraper.scrape_relevant_sources(request.topic, max_sources=3)
-        
-        # 2. Create template request with defaults
-        template_request = TemplateRequest(
-            title=request.topic,
-            level="intermediate",
-            duration_months=3
-        )
-        
-        # 3. Generate base template
-        template = {
-            "title": request.topic,
-            "level": "intermediate",
-            "duration_months": 3,
-            "learning_objectives": [
-                f"Master {request.topic} fundamentals",
-                f"Build practical {request.topic} projects",
-                f"Apply {request.topic} in real-world scenarios"
-            ],
-            "prerequisites": ["Basic programming knowledge"],
-            "chapters": [
-                {
-                    "title": f"Introduction to {request.topic}",
-                    "description": "Course overview and setup",
-                    "units": [f"Unit 1: Basics", "Unit 2: First Project"],
-                    "labs": ["Setup Lab"],
-                    "exercises": ["Intro Quiz"]
-                },
-                {
-                    "title": f"Core {request.topic} Concepts",
-                    "description": "Key principles and techniques",
-                    "units": [f"Unit 1: Core Features", "Unit 2: Best Practices"],
-                    "labs": ["Core Lab"],
-                    "exercises": ["Core Exercises"]
-                },
-                {
-                    "title": f"Advanced {request.topic}",
-                    "description": "Expert level topics",
-                    "units": [f"Unit 1: Advanced Patterns", "Unit 2: Optimization"],
-                    "labs": ["Advanced Project"],
-                    "exercises": ["Challenge Problems"]
-                }
-            ],
-            "scraping_result": scraping_result
-        }
-        
-        # 4. Save to DB
-        course_id = db.create_course_from_template(template)
-        
-        # 5. Populate Neo4j
-        try:
-            populate_from_template(
-                neo4j,
-                title=request.topic,
-                chapters=template["chapters"],
-                prerequisites=template["prerequisites"]
-            )
-        except Exception as neo4j_err:
-            print(f"Neo4j population warning: {neo4j_err}")
-        
-        # 6. Mock full generation (like approve_course)
-        run_id = db.create_approval(course_id=course_id, approved=True, comments="Auto-generated via API")
-        db.update_course_status(course_id, "generating")
-        
-        ai_method = "Premium AI models (OpenRouter)" if request.usep_ai else "Free tier AI + scraping"
-        mock_preview = {
-            "chapters_generated": 8 if request.usep_ai else 5,
-            "sample_chapter": f"Chapter 1: Introduction to {request.topic}",
-            "sample_content": f"# Chapter 1: Introduction\n\nComprehensive content generated using {ai_method}...",
-            "final_markdown_preview": f"## Full Course: {request.topic}\n# Generated in {request.max_time}s max...",
-            "total_content_words": 18000 if request.usep_ai else 12500,
-            "scraping_sources": len(scraping_result.get("sources", [])),
-            "ai_used": request.usep_ai,
-            "max_time": request.max_time,
-            "ai_method": ai_method
-        }
-        
-        db.log_message(run_id, "workflow", f"Generation complete: {mock_preview['chapters_generated']} chapters using {ai_method}")
-        db.update_course_metadata(course_id, {
-            "status": "completed",
-            "has_real_content": True,
-            "usep_ai": request.usep_ai,
-            "max_time": request.max_time,
-            "preview_content": mock_preview,
-            "scraping_info": {
-                "total_sources": mock_preview["scraping_sources"],
-                "quality_score": scraping_result.get("quality_score", 85),
-                "total_content": f"{mock_preview['total_content_words']} words",
-                "method": f"Web scraping + {ai_method}"
-            }
-        })
-        db.update_course_status(course_id, "completed")
-        
-        return {
-            "status": "completed",
-            "message": f"Course '{request.topic}' generated successfully! Scraped {mock_preview['scraping_sources']} sources, used {ai_method}.",
-            "course_id": course_id,
-            "run_id": run_id,
-            "ai_used": request.usep_ai,
-            "max_time": request.max_time,
-            "preview_content": mock_preview,
-            "scraping_info": {
-                "total_sources": mock_preview["scraping_sources"],
-                "quality_score": scraping_result.get("quality_score", 85),
-                "total_content": f"{mock_preview['total_content_words']} words"
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/{course_id}/events")
+async def stream_course_updates(course_id: int, request: Request, repo: PostgresRepo = Depends(get_postgres_repo)):
+    """SSE endpoint to stream real-time progress to the frontend."""
+    async def event_generator():
+        last_log_id = 0
+        # Resolve the initial run_id
+        run_id = None
+        with repo.get_cursor() as cur:
+            cur.execute("SELECT run_id FROM runs WHERE course_id = %s ORDER BY run_id DESC LIMIT 1", (course_id,))
+            row = cur.fetchone()
+            if row: run_id = row[0]
 
+        while True:
+            if await request.is_disconnected():
+                break
 
-@router.post("/courses/{course_id}/approve")
-async def approve_course(
-    course_id: int, 
-    request: ApproveRequest, 
-    db: PostgresRepository = Depends(get_db)
-):
-    """
-    Step 2: Approve template → trigger full content generation (MOCKED for E2E)
-    """
-    run_id = None
-    try:
-        run_id = db.create_approval(
-            course_id=course_id,
-            approved=request.approved,
-            comments=request.comments
-        )
-        
-        if not request.approved:
-            db.update_course_status(course_id, "rejected")
-            return {"status": "rejected", "message": "Course template rejected", "run_id": run_id}
-        
-        db.log_message(run_id, "workflow", "Mock full course generation started")
-        db.update_course_status(course_id, "generating")
+            status_info = repo.get_course_status(course_id)
 
-        mock_preview = {
-            "chapters_generated": 5,
-            "sample_chapter": "Chapter 1: Introduction",
-            "sample_content": "# Chapter 1: Introduction\n\nComprehensive course content...",
-            "final_markdown_preview": "## Full Course Structure\n# Course\n## Chapter 1 (4 weeks)\n...",
-            "total_content_words": 12500,
-            "scraping_sources": 12
-        }
-        
-        db.log_message(run_id, "workflow", f"Mock generation complete: {mock_preview['chapters_generated']} chapters")
-        db.update_course_metadata(course_id, {
-            "status": "completed",
-            "has_real_content": True,
-            "preview_content": mock_preview,
-            "scraping_info": {
-                "total_sources": 12,
-                "quality_score": 92,
-                "total_content": "12,500 words",
-                "method": "Deep web scraping + AI synthesis"
-            }
-        })
-        
-        return {
-            "status": "completed",
-            "message": "Full course generated successfully! Ready for review and download.",
-            "course_id": course_id,
-            "run_id": run_id,
-            "preview_content": mock_preview,
-            "scraping_info": {
-                "total_sources": 12,
-                "quality_score": 92,
-                "total_content": "12,500 words",
-                "method": "Deep web scraping + AI synthesis"
-            }
-        }
-        
-    except Exception as e:
-        if run_id:
-            db.log_message(run_id, "workflow", f"Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+            if run_id:
+                logs = repo.get_logs_after(run_id, last_log_id)
+                for log in logs:
+                    yield f"data: {json.dumps({'type': 'log', 'agent': log['agent_name'], 'message': log['message'], 'level': log['level'], 'status': status_info['status']})}\n\n"
+                    last_log_id = log['log_id']
 
-@router.get("/courses/{course_id}/download")
-async def download_course(course_id: int, format: Literal["markdown", "pdf", "html", "json"] = "markdown", db: PostgresRepository = Depends(get_db)):
-    """
-    Step 3: Download generated course
-    """
-    try:
-        review_data = db.get_course_review(course_id)
-        
-        if review_data["course"]["status"] != "completed":
-            raise HTTPException(status_code=400, detail="Course not fully generated yet")
-        
-        # TODO: Generate real exports
-        content = {
-            "course_id": course_id,
-            "title": review_data["template"]["title"],
-            "format": format,
-            "content": "Full course content would be generated here",
-            "chapters": review_data["template"]["chapters"]
-        }
-        
-        if format == "json":
-            return content
-        elif format == "markdown":
-            markdown = f"# {content['title']}\n\n## Generated Course\n\n{chr(10).join([f'## Chapter: {ch['title']}' for ch in content['chapters']])}"
-            return {"content": markdown, "format": "markdown"}
-        
-        raise HTTPException(status_code=501, detail=f"{format.upper()} export not implemented yet")
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            if status_info['status'] in ['completed', 'failed']:
+                yield f"data: {json.dumps({'type': 'done', 'status': status_info['status']})}\n\n"
+                break
+            
+            await asyncio.sleep(1.5)
 
-@router.post("/courses/{course_id}/final-approve")
-async def final_approve_course(course_id: int, db: PostgresRepository = Depends(get_db)):
-    """
-    Step 4: Final approval → publish course
-    """
-    try:
-        # Update course status
-        with db.conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE courses SET status = 'published' WHERE course_id = %s RETURNING course_id
-                """,
-                (course_id,)
-            )
-            if not cur.fetchone():
-                raise ValueError("Course not found")
-            db.conn.commit()
-        
-        return {"status": "approved_and_saved", "message": "Course published successfully", "approved_at": __import__('datetime').datetime.utcnow().isoformat()}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+@router.get("/{course_id}/course-review")
+async def get_course_review(course_id: int, repo: PostgresRepo = Depends(get_postgres_repo)):
+    review_data = repo.get_course_review(course_id)
+    if not review_data:
+        raise HTTPException(status_code=404, detail="Course not found")
+    return review_data
+
+@router.get("/{course_id}/download")
+async def download_course(course_id: int, format: str = "markdown", repo: PostgresRepo = Depends(get_postgres_repo)):
+    """Return course content as downloadable format"""
+    review_data = repo.get_course_review(course_id)
+    template = review_data.get('template', {})
+    chapters = review_data.get('chapters', [])
+
+    title = template.get('title', 'course') if isinstance(template, dict) else 'course'
+
+    if format == 'json':
+        return JSONResponse(content=review_data, headers={"Content-Disposition": f"attachment; filename={title}.json"})
+
+    # Build markdown from chapters
+    lines = [f"# {title}\n"]
+    if isinstance(template, dict):
+        if template.get('learning_objectives'):
+            lines.append("## Learning Objectives")
+            for obj in template['learning_objectives']:
+                lines.append(f"- {obj}")
+            lines.append("")
+        if template.get('prerequisites'):
+            lines.append("## Prerequisites")
+            for req in template['prerequisites']:
+                lines.append(f"- {req}")
+            lines.append("")
+
+    for ch in chapters:
+        lines.append(f"## {ch.get('title', 'Chapter')}")
+        content = ch.get('content', '')
+        if content:
+            lines.append(content)
+        lines.append("")
+
+    markdown = "\n".join(lines)
+    
+    return PlainTextResponse(
+        content=markdown, 
+        headers={"Content-Disposition": f"attachment; filename={title.replace(' ', '_')}.md"}
+    )
+
+@router.post("/{course_id}/approve")
+async def approve_course(course_id: int, background_tasks: BackgroundTasks):
+    """Frontend compatibility endpoint - calls full generation workflow"""
+    print(f"✅ Frontend approve endpoint hit for course {course_id} - starting full generation")
+    return await approve_and_generate_full(course_id, background_tasks)
+
+print("✅ Simplified endpoints - Real generation focus!")

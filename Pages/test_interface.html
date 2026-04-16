@@ -112,18 +112,19 @@
         <!-- Course Builder Form -->
         <div class="builder-form">
             <div class="form-row">
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label>Course Topic</label>
-                    <input type="text" id="courseTitle" placeholder="e.g. Python, Machine Learning, Web Development, Data Science..." />
+<div class="form-group" style="grid-column: 1 / -1;">
+<label>Course Topic <span style="color: #f44336;">*</span> <span id="charCount" style="color: #666; font-size: 12px;">0/255</span></label>
+                    <input type="text" id="courseTitle" placeholder="Type course topic (min 3 chars)..." required minlength="3" autocomplete="off" />
+                    <div id="inputStatus" style="font-size: 13px; margin-top: 5px;"></div>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                 <div class="form-group">
                     <label>Difficulty Level</label>
                     <div class="level-pills">
-                        <button type="button" class="level-pill beginner selected" data-level="beginner" onclick="selectLevel('beginner')">🟢 Beginner</button>
-                        <button type="button" class="level-pill intermediate" data-level="intermediate" onclick="selectLevel('intermediate')">🟡 Intermediate</button>
-                        <button type="button" class="level-pill advanced" data-level="advanced" onclick="selectLevel('advanced')">🔴 Advanced</button>
+        <button type="button" class="level-pill beginner selected" data-level="beginner" onclick="selectLevel('beginner')">🟢 Beginner (click to change)</button>
+                        <button type="button" class="level-pill intermediate" data-level="intermediate" onclick="selectLevel('intermediate')">🟡 Intermediate (click)</button>
+                        <button type="button" class="level-pill advanced" data-level="advanced" onclick="selectLevel('advanced')">🔴 Advanced (click)</button>
                     </div>
                 </div>
                 <div class="form-group">
@@ -137,7 +138,8 @@
                 </div>
             </div>
             <div style="margin-top: 25px; text-align: center;">
-                <button class="generate-main-btn" id="generateBtn" onclick="generateCourse()">
+                <div id="formErrors" style="color: #f44336; font-size: 14px; margin-bottom: 10px; min-height: 20px;"></div>
+                <button class="generate-main-btn" id="generateBtn" onclick="generateCourse()" disabled>
                     🚀 Generate Course Template
                 </button>
             </div>
@@ -169,17 +171,31 @@
         let selectedLevel = 'beginner';
         let durationMonths = 3;
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedCourseId = localStorage.getItem('course_id');
-            const savedApprovalId = localStorage.getItem('approval_id');
-            if (savedCourseId || savedApprovalId) {
-                document.getElementById('continueWorkflow').style.display = 'block';
+    document.addEventListener('DOMContentLoaded', async function() {
+            // Check for saved course using secure session
+            try {
+                const response = await fetch('/session/course');
+                const { course_id } = await response.json();
+                if (course_id) {
+                    document.getElementById('continueWorkflow').style.display = 'block';
+                }
+            } catch (e) {
+                console.log('No active session');
             }
 
             let searchTimeout;
             let searchAbortController;
 
+            // Auto-focus input
+            setTimeout(() => {
+                document.getElementById('courseTitle').focus();
+                console.log('Page loaded - input focused');
+            }, 100);
+            
+            validateForm();
+
             document.getElementById('courseTitle').addEventListener('input', function() {
+                console.log('Input event:', this.value);
                 clearTimeout(searchTimeout);
                 const q = this.value.trim();
                 if (q.length >= 2) {
@@ -193,6 +209,7 @@
                     document.getElementById('existingSection').style.display = 'none';
                     document.getElementById('searchResults').innerHTML = '';
                 }
+                validateForm();
             });
 
             document.getElementById('courseTitle').addEventListener('keydown', function(e) {
@@ -200,24 +217,57 @@
             });
         });
 
+        function validateForm() {
+            const title = document.getElementById('courseTitle').value.trim();
+            const errorsDiv = document.getElementById('formErrors');
+            const btn = document.getElementById('generateBtn');
+            const charCount = document.getElementById('charCount');
+            const statusDiv = document.getElementById('inputStatus');
+            
+            charCount.textContent = `${title.length}/255`;
+            if (title.length > 0) charCount.style.color = title.length >= 3 ? '#4CAF50' : '#ff9800';
+            
+            const errors = [];
+            if (title.length < 3) errors.push('Course topic must be at least 3 characters');
+            if (!selectedLevel) errors.push('Please select difficulty level');
+            if (durationMonths < 1 || durationMonths > 12) errors.push('Duration must be 1-12 months');
+            
+            const isValid = errors.length === 0;
+            errorsDiv.textContent = isValid ? '' : errors.join(', ');
+            statusDiv.textContent = title.length >= 3 ? '✓ Ready to generate' : title.length > 0 ? `Type ${3-title.length} more chars` : '';
+            statusDiv.style.color = title.length >= 3 ? '#4CAF50' : title.length > 0 ? '#ff9800' : '#666';
+            btn.disabled = !isValid;
+            console.log('Validation:', {titleLen: title.length, level: selectedLevel, duration: durationMonths, valid: isValid});
+            return isValid;
+        }
+
         function selectLevel(level) {
+            console.log('Level clicked:', level);
             selectedLevel = level;
             document.querySelectorAll('.level-pill').forEach(p => {
-                p.classList.toggle('selected', p.dataset.level === level);
+                p.classList.remove('selected');
+                if (p.dataset.level === level) {
+                    p.classList.add('selected');
+                }
             });
+            validateForm();
+            console.log('New selection:', selectedLevel);
         }
 
         function changeDuration(delta) {
+            console.log('Duration delta:', delta);
             durationMonths = Math.min(12, Math.max(1, durationMonths + delta));
             document.getElementById('durationDisplay').textContent =
                 durationMonths + (durationMonths === 1 ? ' month' : ' months');
             document.getElementById('durDecrBtn').disabled = durationMonths === 1;
             document.getElementById('durIncrBtn').disabled = durationMonths === 12;
+            validateForm();
+            console.log('New duration:', durationMonths);
         }
 
         async function searchExisting(query, signal) {
             try {
-`/courses/search-courses?q=${encodeURIComponent(query)}`
+                const res = await fetch(`/courses/search-courses?q=${encodeURIComponent(query)}`, { signal });
                 if (!res.ok) throw new Error(`Search failed: ${res.status}`);
                 const data = await res.json();
                 const dbResults = (data.results || []).filter(r => r.course_id > 0);
@@ -268,80 +318,85 @@
             document.getElementById('existingSection').style.display = 'block';
         }
 
-        function openExisting(courseId) {
-            localStorage.setItem('course_id', courseId);
-            window.location.href = `/Pages/course_review_interface.html?course_id=${courseId}`;
+        async function openExisting(courseId) {
+            // Save to secure session
+            try {
+                await fetch('/session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `course_id=${courseId}`
+                });
+            } catch (e) {
+                console.error('Failed to save session:', e);
+            }
+            window.location.href = `/pages/course_review_interface.html?course_id=${courseId}`;
         }
 
         async function generateCourse() {
+            if (!validateForm()) return;
+
             const titleEl = document.getElementById('courseTitle');
             const btn = document.getElementById('generateBtn');
             const loadingEl = document.getElementById('loading');
             const loadingMsg = document.getElementById('loadingMsg');
 
             const title = titleEl.value.trim();
-            if (!title) {
-                titleEl.focus();
-                titleEl.style.borderColor = '#f44336';
-                setTimeout(() => { titleEl.style.borderColor = ''; }, 2000);
-                return;
-            }
 
             const generateAbortController = new AbortController();
-            const timeoutId = setTimeout(() => generateAbortController.abort(), 30000);
+            const timeoutId = setTimeout(() => generateAbortController.abort(), 120000);
 
             btn.disabled = true;
             btn.textContent = '⏳ Generating...';
             loadingEl.style.display = 'block';
             loadingMsg.textContent = `Building "${title}" — ${selectedLevel}, ${durationMonths} month${durationMonths > 1 ? 's' : ''}...`;
 
-            try {
-'/courses/generate/course-template'
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ title, level: selectedLevel, duration_months: durationMonths }),
-                    signal: generateAbortController.signal
-                });
+            // Use SSE for progress
+            const eventSource = new EventSource(`/courses/generate/course-template-stream?title=${encodeURIComponent(title)}&amp;level=${selectedLevel}&amp;duration_months=${durationMonths}`);
 
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.detail || `Server error ${res.status}`);
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'start') {
+                    loadingMsg.textContent = data.message;
+                } else if (data.type === 'progress') {
+                    loadingMsg.textContent = data.message;
+                    if (data.percent) {
+                        // Optional progress bar
+                    }
+                } else if (data.type === 'done' || data.type === 'complete') {
+                    eventSource.close();
+                    loadingEl.style.display = 'none';
+                    // Save session and redirect
+                    fetch('/session', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `course_id=${data.course_id}`
+                    }).then(() => {
+                        window.location.href = `/Pages/course_review.html?course_id=${data.course_id}`;
+                    });
                 }
+            };
 
-                const result = await res.json();
-                const approvalId = result.approval_id || result.course_id;
-                const courseId = result.course_id || result.approval_id;
-                if (approvalId && courseId) {
-                    localStorage.setItem('approval_id', approvalId);
-                    localStorage.setItem('course_id', courseId);
-                    window.location.href = `/Pages/approval_interface.html?course_id=${approvalId}`;
-                } else {
-                    throw new Error('No course ID returned from server');
-                }
-            } catch (error) {
+            eventSource.onerror = function() {
+                eventSource.close();
                 loadingEl.style.display = 'none';
-                alert(error.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Generation failed: ' + error.message);
-            } finally {
-                clearTimeout(timeoutId);
+                alert('Generation interrupted. Please try again.');
                 btn.disabled = false;
                 btn.textContent = '🚀 Generate Course Template';
-            }
+            };
         }
 
-        function goToReview(type) {
-            const id = type === 'approval'
-                ? (localStorage.getItem('approval_id') || localStorage.getItem('course_id'))
-                : localStorage.getItem('course_id');
-            if (!id) { alert('No course ID found.'); return; }
+        async function goToReview(type) {
+            // Use URL param for navigation (session already set)
+            const urlParam = new URLSearchParams(window.location.search).get('course_id');
+            if (!urlParam) { alert('No course ID found.'); return; }
             window.location.href = type === 'approval'
-                ? `/Pages/approval_interface.html?course_id=${id}`
-                : `/Pages/course_review_interface.html?course_id=${id}`;
+                ? `/pages/approval_interface.html?course_id=${urlParam}`
+                : `/pages/course_review_interface.html?course_id=${urlParam}`;
         }
 
-        function clearWorkflow() {
+        async function clearWorkflow() {
             if (confirm('Clear saved progress and start fresh?')) {
-                localStorage.removeItem('approval_id');
-                localStorage.removeItem('course_id');
+                await fetch('/session/clear', {method: 'POST'});
                 document.getElementById('continueWorkflow').style.display = 'none';
             }
         }

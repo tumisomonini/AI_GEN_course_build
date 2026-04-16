@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+from dotenv import load_dotenv
+load_dotenv()
 from Application.Agents.Author_agent import AuthorAgent
-from sentence_transformers import SentenceTransformer
 
 @pytest.fixture
 def mock_astra():
@@ -23,7 +24,7 @@ def test_author_generate_content(mock_astra, mock_openai_client):
         mock_model.encode.return_value = [0.1] * 384
         mock_embed.return_value = mock_model
         
-        author = AuthorAgent(mock_astra, "fake_key")
+        author = AuthorAgent(mock_astra)
         author.openai_client = mock_openai_client
         
         content = author.generate_content("Python Basics")

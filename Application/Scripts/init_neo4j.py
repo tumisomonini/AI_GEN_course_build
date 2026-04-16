@@ -1,9 +1,12 @@
 """Neo4j initialization module."""
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+_ENV = Path(__file__).resolve().parents[2] / '.env'
+
 def init_neo4j():
-    load_dotenv()
+    load_dotenv(_ENV)
     uri = os.getenv("NEO4J_URI")
     user = os.getenv("NEO4J_USERNAME")
     password = os.getenv("NEO4J_PASSWORD")

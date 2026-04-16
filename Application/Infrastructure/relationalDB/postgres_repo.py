@@ -1,5 +1,8 @@
 import psycopg2
+from psycopg2 import pool
 from typing import List, Dict, Optional, Any
+from contextlib import contextmanager
+from Domain.course import Chapter
 
 class PostgresRepository:
     def __init__(self, dbname: str, user: str, password: str, host: str = "localhost", port: int = 5433):
@@ -10,7 +13,25 @@ class PostgresRepository:
             'host': host,
             'port': port
         }
-        self.conn = psycopg2.connect(**self.conn_params)
+        # Initialize a thread-safe connection pool
+        self.pool = pool.ThreadedConnectionPool(
+            minconn=1,
+            maxconn=20,  # Allows up to 20 parallel agent operations
+            **self.conn_params
+        )
+
+    @contextmanager
+    def get_cursor(self):
+        """Context manager to get a connection from the pool and return it."""
+        conn = self.pool.getconn()
+        try:
+            yield conn.cursor()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            self.pool.putconn(conn)
 
     def init_schema(self) -> None:
         """Initialize the full PostgreSQL schema with all tables and indexes."""
@@ -28,7 +49,7 @@ CREATE TABLE users (
 
 CREATE TABLE courses (
     course_id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     audience VARCHAR(255),
     created_by INT REFERENCES users(user_id),
@@ -45,6 +66,7 @@ CREATE TABLE chapters (
     chapter_order INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_id, title),
     status VARCHAR(50) DEFAULT 'draft'
 );
 
@@ -140,6 +162,13 @@ CREATE TABLE exports (
     status VARCHAR(50) DEFAULT 'pending'
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    session_id UUID PRIMARY KEY,
+    data JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL
+);
+
 -- Indexes
 CREATE INDEX idx_courses_created_by ON courses(created_by);
 CREATE INDEX idx_courses_status ON courses(status);
@@ -156,301 +185,235 @@ CREATE INDEX idx_metrics_run_id ON metrics(run_id);
 CREATE INDEX idx_metrics_agent_name ON metrics(agent_name);
 CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
         """
-        cur = self.conn.cursor()
-        cur.execute(schema_sql)
+        with self.get_cursor() as cur:
+            cur.execute(schema_sql)
 
-    # Existing methods (updated column names to match schema)
     def create_course(self, title: str, audience: str, description: Optional[str] = None, created_by: Optional[int] = None) -> int:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO courses (title, description, audience, created_by) 
-            VALUES (%s, %s, %s, %s) RETURNING course_id
-            """,
-            (title, description, audience, created_by)
-        )
-        course_id = cur.fetchone()[0]
-        return course_id
+        with self.get_cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO courses (title, description, audience, created_by) 
+                VALUES (%s, %s, %s, %s) 
+                ON CONFLICT (title) DO UPDATE SET updated_at = CURRENT_TIMESTAMP RETURNING course_id
+                """,
+                (title, description, audience, created_by)
+            )
+            return cur.fetchone()[0]
 
     def get_chapters(self, course_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT chapter_id, title, content, chapter_order, status 
-            FROM chapters 
-            WHERE course_id = %s 
-            ORDER BY chapter_order
-            """,
-            (course_id,)
-        )
-        columns = ["chapter_id", "title", "content", "chapter_order", "status"]
-        return [dict(zip(columns, row)) for row in cur.fetchall()]
-
-    def log_run(self, run_id: int, agent_name: str, message: str, level: str = "info") -> None:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO logs (run_id, agent_name, message, level) 
-            VALUES (%s, %s, %s, %s)
-            """,
-            (run_id, agent_name, message, level)
-        )
-
-    # Example query methods from task
-    def get_chapters_for_course(self, course_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT chapter_id, title, content, chapter_order, status
-            FROM chapters
-            WHERE course_id = %s
-            ORDER BY chapter_order
-            """,
-            (course_id,)
-        )
-        columns = ["chapter_id", "title", "content", "chapter_order", "status"]
-        return [dict(zip(columns, row)) for row in cur.fetchall()]
-
-    def get_approvals_for_run(self, run_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT a.approval_id, u.username AS approver, a.status, a.comments, a.approved_at
-            FROM approvals a
-            JOIN users u ON a.approver_id = u.user_id
-            WHERE a.run_id = %s
-            """,
-            (run_id,)
-        )
-        columns = ["approval_id", "approver", "status", "comments", "approved_at"]
-        return [dict(zip(columns, row)) for row in cur.fetchall()]
-
-    def get_metrics_for_run(self, run_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT metric_name, value, created_at
-            FROM metrics
-            WHERE run_id = %s
-            ORDER BY created_at
-            """,
-            (run_id,)
-        )
-        columns = ["metric_name", "value", "created_at"]
-        return [dict(zip(columns, row)) for row in cur.fetchall()]
-
-    def get_logs_for_run(self, run_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT agent_name, message, level, created_at
-            FROM logs
-            WHERE run_id = %s
-            ORDER BY created_at
-            """,
-            (run_id,)
-        )
-        columns = ["agent_name", "message", "level", "created_at"]
-        return [dict(zip(columns, row)) for row in cur.fetchall()]
-
-    # NEW METHODS FOR COURSE WORKFLOW
-    def create_course_from_template(self, template: dict, created_by: Optional[int] = None) -> int:
-        """Create course + save template as syllabus JSON"""
-        import json
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO courses (title, description, audience, created_by, status) 
-            VALUES (%s, %s, %s, %s, %s) RETURNING course_id
-            """,
-            (
-                template.get("title", "Untitled Course"),
-                template.get("description"),
-                template.get("audience", template.get("level")),
-                created_by,
-                "draft"
-            )
-        )
-        course_id = cur.fetchone()[0]
-        
-        cur.execute(
-            "INSERT INTO syllabus (course_id, content, status) VALUES (%s, %s::jsonb, %s)",
-            (course_id, json.dumps(template), "draft")
-        )
-        
-        cur.execute(
-            "INSERT INTO runs (course_id, workflow_name, status) VALUES (%s, %s, %s)",
-            (course_id, "template_generation", "completed")
-        )
-        self.conn.commit()
-        return course_id
-
-    def get_course_review(self, course_id: int) -> Dict[str, Any]:
-        """Get full course review data for frontend"""
-        cur = self.conn.cursor()
-        cur.execute(
-            "SELECT course_id, title, audience, status, created_at FROM courses WHERE course_id = %s",
-            (course_id,)
-        )
-        course_row = cur.fetchone()
-        if not course_row:
-            raise ValueError(f"Course {course_id} not found")
-        course = dict(zip(["course_id", "title", "audience", "status", "created_at"], course_row))
-
-        cur.execute(
-            "SELECT content FROM syllabus WHERE course_id = %s ORDER BY syllabus_id DESC LIMIT 1",
-            (course_id,)
-        )
-        syllabus_row = cur.fetchone()
-        template = syllabus_row[0] if syllabus_row else {}
-
-        cur.execute(
-            "SELECT status, workflow_name FROM runs WHERE course_id = %s ORDER BY run_id DESC LIMIT 1",
-            (course_id,)
-        )
-        run_row = cur.fetchone()
-        run_status = dict(zip(["status", "workflow_name"], run_row)) if run_row else {}
-
-        scraping_result = template.get("scraping_result", {})
-        course_status = course.get("status", "draft")
-        has_real_content = course_status in ("completed", "published")
-
-        return {
-            "course": course,
-            "template": template,
-            "run_status": run_status,
-            "scraping_result": scraping_result,
-            "metadata": {
-                "status": course_status,
-                "run_status": run_status.get("status", "unknown"),
-                "has_real_content": has_real_content,
-                "is_real_data": scraping_result.get("is_real_data", False),
-                "total_sources": scraping_result.get("total_sources", 0),
-                "quality_score": scraping_result.get("quality_score", 85),
-                "total_content_words": scraping_result.get("total_content", "N/A"),
-                "sources": scraping_result.get("sources", []),
-            }
-        }
-
-    def create_approval(self, course_id: int, approved: bool, comments: Optional[str] = None, created_by: Optional[int] = None) -> int:
-        """Create approval record and update course status"""
-        # Get latest run_id
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO runs (course_id, workflow_name, status) 
-            VALUES (%s, %s, %s) RETURNING run_id
-            """,
-            (course_id, "approval", "running")
-        )
-        run_id = cur.fetchone()[0]
-        
-        # Log approval
-        cur.execute(
-            """
-            INSERT INTO approvals (run_id, status, comments, approver_id) 
-            VALUES (%s, %s, %s, %s)
-            """,
-            (run_id, "approved" if approved else "rejected", comments, created_by)
-        )
-        
-        self.conn.commit()
-        return run_id
-
-    def update_course_status(self, course_id: int, status: str) -> None:
-        """Update course status"""
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            UPDATE courses SET status = %s WHERE course_id = %s
-            """,
-            (status, course_id)
-        )
-        self.conn.commit()
-
-    def update_course_metadata(self, course_id: int, metadata: Dict[str, Any]) -> None:
-        """Update course metadata (JSON column or latest syllabus)"""
-        import json
-        cur = self.conn.cursor()
-        if 'status' in metadata:
+        with self.get_cursor() as cur:
             cur.execute(
-                "UPDATE courses SET status = %s WHERE course_id = %s",
-                (metadata['status'], course_id)
+                """
+                SELECT chapter_id, title, content, chapter_order, status 
+                FROM chapters 
+                WHERE course_id = %s 
+                ORDER BY chapter_order
+                """,
+                (course_id,)
             )
-        # Update latest syllabus row using a subquery (PostgreSQL doesn't support ORDER BY/LIMIT in UPDATE)
-        cur.execute(
-            """
-            UPDATE syllabus SET content = content || %s::jsonb
-            WHERE syllabus_id = (
-                SELECT syllabus_id FROM syllabus WHERE course_id = %s ORDER BY syllabus_id DESC LIMIT 1
-            )
-            """,
-            (json.dumps(metadata), course_id)
-        )
-        self.conn.commit()
+            columns = ["chapter_id", "title", "content", "chapter_order", "status"]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
 
-    def log_message(self, run_id: int, agent_name: str, message: str, level: str = "info") -> None:
-        """Log message for run"""
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO logs (run_id, agent_name, message, level) 
-            VALUES (%s, %s, %s, %s)
-            """,
-            (run_id, agent_name, message, level)
-        )
-        self.conn.commit()
+    def get_chapters_for_course(self, course_id: int) -> List[Dict[str, Any]]:
+        return self.get_chapters(course_id)
+
+    def create_course_from_template(self, template: Dict[str, Any]) -> int:
+        """Insert a course from a CourseTemplate dict, store chapters as draft rows."""
+        import json
+        status = template.get('status', 'draft')
+        with self.get_cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO courses (title, description, audience, status) VALUES (%s, %s, %s, %s)
+                RETURNING course_id
+                """,
+                (template['title'], str(template.get('learning_objectives', [])), template.get('level', 'general'), status)
+            )
+            course_id = cur.fetchone()[0]
+            for i, ch in enumerate(template.get('chapters', [])):
+                title = ch['title'] if isinstance(ch, dict) else str(ch)
+                cur.execute(
+                    "INSERT INTO chapters (course_id, title, content, chapter_order, status) VALUES (%s, %s, %s, %s, 'draft') ON CONFLICT (course_id, title) DO NOTHING",
+                    (course_id, title, '', i + 1)
+                )
+            cur.execute(
+                "INSERT INTO syllabus (course_id, content, status) VALUES (%s, %s, 'draft')",
+                (course_id, json.dumps(template))
+            )
+            return course_id
+
+    def create_run(self, course_id: int, workflow_name: str) -> int:
+        """Create a new run record for tracking progress."""
+        with self.get_cursor() as cur:
+            cur.execute(
+                "INSERT INTO runs (course_id, workflow_name, status) VALUES (%s, %s, 'running') RETURNING run_id",
+                (course_id, workflow_name)
+            )
+            return cur.fetchone()[0]
+
+    def update_course_template(self, course_id: int, template: Dict[str, Any]) -> None:
+        """Update the course syllabus and sync the chapters table with the generated outline."""
+        import json
+        with self.get_cursor() as cur:
+            # 1. Update the structured syllabus
+            cur.execute(
+                "UPDATE syllabus SET content = %s, updated_at = CURRENT_TIMESTAMP WHERE course_id = %s",
+                (json.dumps(template), course_id)
+            )
+            # 2. Sync chapters table (delete old draft placeholders and insert new ones)
+            cur.execute("DELETE FROM chapters WHERE course_id = %s AND status = 'draft'", (course_id,))
+            for i, chapter_title in enumerate(template.get('chapters', [])):
+                cur.execute(
+                    """
+                    INSERT INTO chapters (course_id, title, content, chapter_order, status)
+                    VALUES (%s, %s, %s, %s, 'draft')
+                    """,
+                    (course_id, chapter_title, '', i + 1)
+                )
+
+    def update_run_status(self, run_id: int, status: str) -> None:
+        with self.get_cursor() as cur:
+            cur.execute("UPDATE runs SET status = %s, completed_at = CASE WHEN %s IN ('completed', 'failed') THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE run_id = %s", (status, status, run_id))
 
     def get_course_status(self, course_id: int) -> Dict[str, Any]:
-        """Lightweight status check — only fetches status, no syllabus content"""
-        cur = self.conn.cursor()
-        cur.execute(
-            "SELECT status FROM courses WHERE course_id = %s",
-            (course_id,)
-        )
-        row = cur.fetchone()
-        if not row:
-            raise ValueError(f"Course {course_id} not found")
-        return {"course_id": course_id, "status": row[0]}
+        with self.get_cursor() as cur:
+            cur.execute("SELECT course_id, title, status, created_at, updated_at FROM courses WHERE course_id = %s", (course_id,))
+            row = cur.fetchone()
+            if not row:
+                return {'error': 'Course not found', 'course_id': course_id}
+            return dict(zip(['course_id', 'title', 'status', 'created_at', 'updated_at'], row))
 
-    def search_courses(self, query: str, limit: int = 6) -> List[Dict[str, Any]]:
-        """Search courses by title or audience"""
-        cur = self.conn.cursor()
-        cur.execute(
-            """
-            SELECT c.course_id, c.title, c.audience, c.status, c.created_at,
-                   s.content->>'level' AS level, s.content->>'duration_months' AS duration_months
-            FROM courses c
-            LEFT JOIN LATERAL (
-                SELECT content FROM syllabus WHERE course_id = c.course_id ORDER BY syllabus_id DESC LIMIT 1
-            ) s ON true
-            WHERE c.title ILIKE %s OR c.audience ILIKE %s
-            ORDER BY c.created_at DESC
-            LIMIT %s
-            """,
-            (f'%{query}%', f'%{query}%', limit)
-        )
-        columns = ["course_id", "title", "audience", "status", "created_at", "level", "duration_months"]
-        rows = cur.fetchall()
-        results = []
-        for row in rows:
-            r = dict(zip(columns, row))
-            results.append({
-                "course_id": r["course_id"],
-                "title": r["title"],
-                "level": r["level"] or r["audience"] or "beginner",
-                "duration_months": int(r["duration_months"]) if r["duration_months"] else 3,
-                "preview": f"Existing course: {r['title']} ({r['status']})",
-            })
-        return results
+    def get_course_review(self, course_id: int) -> Dict[str, Any]:
+        import json
+        with self.get_cursor() as cur:
+            cur.execute("SELECT course_id, title, status, created_at, updated_at FROM courses WHERE course_id = %s", (course_id,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError(f"Course {course_id} not found")
+            course = dict(zip(['course_id', 'title', 'status', 'created_at', 'updated_at'], row))
+            cur.execute("SELECT content FROM syllabus WHERE course_id = %s ORDER BY syllabus_id DESC LIMIT 1", (course_id,))
+            syl_row = cur.fetchone()
+            template = syl_row[0] if syl_row else {}
+            chapters = self.get_chapters(course_id)
+            return {
+                'course_id': course_id,
+                'course': course,
+                'template': template,
+                'metadata': {'chapters_count': len(chapters)},
+                'chapters': chapters
+            }
+
+    def create_approval(self, course_id: int, approved: bool, comments: Optional[str] = None) -> int:
+        """Create an approval record linked to the latest run for this course."""
+        with self.get_cursor() as cur:
+            cur.execute("SELECT run_id FROM runs WHERE course_id = %s ORDER BY run_id DESC LIMIT 1", (course_id,))
+            row = cur.fetchone()
+            if row:
+                run_id = row[0]
+            else:
+                cur.execute(
+                    "INSERT INTO runs (course_id, workflow_name, status) VALUES (%s, 'approval', 'running') RETURNING run_id",
+                    (course_id,)
+                )
+                run_id = cur.fetchone()[0]
+            status = 'approved' if approved else 'rejected'
+            cur.execute(
+                "INSERT INTO approvals (run_id, status, comments) VALUES (%s, %s, %s) RETURNING approval_id",
+                (run_id, status, comments)
+            )
+            return cur.fetchone()[0]
+
+    def update_course_status(self, course_id: int, status: str) -> None:
+        with self.get_cursor() as cur:
+            cur.execute("UPDATE courses SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE course_id = %s", (status, course_id))
+
+    def get_latest_error(self, course_id: int) -> Optional[str]:
+        """Retrieve the most recent error message for a course."""
+        with self.get_cursor() as cur:
+            cur.execute("""
+                SELECT l.message FROM logs l 
+                JOIN runs r ON l.run_id = r.run_id 
+                WHERE r.course_id = %s AND l.level = 'error' 
+                ORDER BY l.created_at DESC LIMIT 1
+            """, (course_id,))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+    def log_message(self, run_id: int, agent_name: str, message: str, level: str = 'info') -> None:
+        with self.get_cursor() as cur:
+            cur.execute(
+                "INSERT INTO logs (run_id, agent_name, message, level) VALUES (%s, %s, %s, %s)",
+                (run_id, agent_name, message, level)
+            )
+
+    def log_run(self, run_id: int, agent_name: str, message: str, level: str = 'info') -> None:
+        """Alias for log_message."""
+        self.log_message(run_id, agent_name, message, level)
+
+    def get_logs_for_run(self, run_id: int) -> List[Dict[str, Any]]:
+        with self.get_cursor() as cur:
+            cur.execute(
+                "SELECT log_id, agent_name, message, level, created_at FROM logs WHERE run_id = %s ORDER BY log_id",
+                (run_id,)
+            )
+            columns = ["log_id", "agent_name", "message", "level", "created_at"]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def search_courses(self, query: str) -> List[Dict[str, Any]]:
+        with self.get_cursor() as cur:
+            cur.execute(
+                "SELECT course_id, title, status FROM courses WHERE title ILIKE %s ORDER BY course_id",
+                (f"%{query}%",)
+            )
+            columns = ["course_id", "title", "status"]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def get_metrics_for_run(self, run_id: int) -> List[Dict[str, Any]]:
+        with self.get_cursor() as cur:
+            cur.execute(
+                "SELECT metric_id, agent_name, metric_name, value, created_at FROM metrics WHERE run_id = %s ORDER BY metric_id",
+                (run_id,)
+            )
+            columns = ["metric_id", "agent_name", "metric_name", "value", "created_at"]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def save_full_course_chapters(self, course_id: int, chapters: List) -> None:
+        """Save full generated chapters from workflow to chapters table"""
+        with self.get_cursor() as cur:
+            # Clear previous generated chapters
+            cur.execute("DELETE FROM chapters WHERE course_id = %s AND status = 'generated'", (course_id,))
+            for i, ch_dict in enumerate(chapters):
+                cur.execute(
+                    """
+                    INSERT INTO chapters (course_id, title, content, chapter_order, status)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (course_id, ch_dict['title'], ch_dict['content'], i+1, 'generated')
+                )
+            print(f"✅ Saved {len(chapters)} chapters for course {course_id}")
+
+    def get_logs_after(self, run_id: int, last_log_id: int = 0) -> List[Dict[str, Any]]:
+        """Get logs for a run after a specific log_id for incremental streaming."""
+        with self.get_cursor() as cur:
+            cur.execute(
+                """
+                SELECT log_id, agent_name, message, level 
+                FROM logs 
+                WHERE run_id = %s AND log_id > %s 
+                ORDER BY log_id
+                """,
+                (run_id, last_log_id)
+            )
+            columns = ["log_id", "agent_name", "message", "level"]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def cleanup_expired_sessions(self) -> int:
+        """Delete expired sessions from the database. Returns count of deleted rows."""
+        with self.get_cursor() as cur:
+            cur.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+            return cur.rowcount
 
     def close(self):
-        """Close DB connection"""
-        if hasattr(self, 'conn') and self.conn:
-            self.conn.close()
-
-
-# Usage example:
-# repo = PostgresRepository(dbname="ai_gen_db", user="postgres", password="password")
-# repo.init_schema()
-
+        """Close the database connection."""
+        if self.pool:
+            self.pool.closeall()

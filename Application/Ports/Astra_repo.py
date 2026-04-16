@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from ..Infrastructure.vectorDb.Astra_vector_store import AstraVectorStore
+from Application.Infrastructure.vectorDb.Astra_vector_store import AstraVectorStore
 
 
 class AstraRepo:

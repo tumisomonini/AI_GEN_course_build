@@ -15,7 +15,7 @@ CREATE TABLE users (
 
 CREATE TABLE courses (
     course_id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     audience VARCHAR(255),
     created_by INT REFERENCES users(user_id),
@@ -113,7 +113,18 @@ CREATE TABLE costs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Artifact and Export Tables
+-- 5. Sessions Table (NEW)
+
+CREATE TABLE sessions (
+    session_id VARCHAR(64) PRIMARY KEY,
+    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_sessions_course ON sessions(course_id);
+CREATE INDEX idx_sessions_expires ON sessions(expires_at);
+
+-- 6. Artifact and Export Tables
 
 CREATE TABLE artifacts (
     artifact_id SERIAL PRIMARY KEY,

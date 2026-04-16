@@ -4,25 +4,33 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 # Domain dataclasses (existing)
-@dataclass
-class Course:
-    title: str
-    audience: str
-    outcomes: List[str]
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
 
-@dataclass
-class Chapter:
-    title: str
-    content: str
+class Course(BaseModel):
+    title: str = Field(..., min_length=3)
+    audience: str = "general"
+    outcomes: List[str] = Field(default_factory=list)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Course':
+        return cls(
+            title=data.get('title', 'Untitled'),
+            audience=data.get('audience', 'general'),
+            outcomes=data.get('outcomes', [])
+        )
 
-@dataclass
-class Syllabus:
-    course: Course
-    chapters: List[Chapter]
+class Chapter(BaseModel):
+    title: str
+    content: str = ""
+    
+    @classmethod
+    def from_scraped(cls, title: str, content: str) -> 'Chapter':
+        return cls(title=title, content=content[:1000])  # Truncate long content
 
 # Pydantic models for API
 class CourseCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
+    title: str = Field(..., min_length=3, max_length=255, description="Course title must be at least 3 characters")
     level: Literal["beginner", "intermediate", "advanced"]
     duration_months: int = Field(..., ge=1, le=12)
     audience: Optional[str] = None

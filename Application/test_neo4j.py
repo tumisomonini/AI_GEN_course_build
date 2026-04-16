@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 uri = os.getenv('NEO4J_URI')
 user = os.getenv('NEO4J_USERNAME')
