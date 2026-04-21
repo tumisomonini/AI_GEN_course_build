@@ -1,3 +1,8 @@
+import sys
+import os
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from Application.Workflows.syllabus_workflow import create_syllabus_workflow

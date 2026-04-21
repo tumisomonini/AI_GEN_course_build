@@ -7,10 +7,11 @@ _ENV = Path(__file__).resolve().parents[2] / '.env'
 
 def init_neo4j():
     load_dotenv(_ENV)
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USERNAME")
-    password = os.getenv("NEO4J_PASSWORD")
-    database = os.getenv("NEO4J_DATABASE")
+    # Use local Docker Neo4j (existing course_neo4j container)
+    uri = "bolt://localhost:7687"
+    user = "neo4j"
+    password = "password"  # Change if different
+    database = None
 
     try:
         from Application.Infrastructure.graphDb.neo4j_repo import Neo4jRepository

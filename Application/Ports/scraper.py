@@ -14,6 +14,7 @@ except ImportError:
     DDGS = None
 
 load_dotenv(Path(__file__).resolve().parents[2] / '.env')
+from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabus_dict, log_cleaning_stats
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 import concurrent.futures
@@ -170,20 +171,22 @@ def scrape_relevant_syllabi(course_title: str, max_results: int = 3) -> List['Sy
             url = result.get('href', '')
             source_title = result.get('title', 'Unknown')
             try:
-                if 'pdf' in url.lower():
-                    raw_content = scrape_pdf_syllabus(url)
-                else:
-                    raw_content = scrape_web_syllabus(url)
-
-                structured_dict = parse_syllabus(raw_content)
+                cleaned_raw, raw_stats = clean_raw_text(scrape_pdf_syllabus(url) if 'pdf' in url.lower() else scrape_web_syllabus(url))
+                log_cleaning_stats(raw_stats, 'scrape')
+                
+                structured_dict = parse_syllabus(cleaned_raw)
                 structured_dict['source_url'] = url
                 structured_dict['source_title'] = source_title
                 
+                cleaned_struct, struct_stats = clean_syllabus_dict(structured_dict)
+                log_cleaning_stats({'structured': struct_stats}, 'parse')
+                
                 # Enhanced scoring: reward specific educational structures
-                topic_count = len(structured_dict.get('main_topics', []))
-                obj_count = len(structured_dict.get('learning_objectives', []))
-                structured_dict['quality_score'] = (topic_count * 10) + (obj_count * 5)
-                structured = structured_dict
+                topic_count = len(cleaned_struct.get('main_topics', []))
+                obj_count = len(cleaned_struct.get('learning_objectives', []))
+                cleaned_struct['quality_score'] = (topic_count * 10) + (obj_count * 5)
+                cleaned_struct['_cleaning_stats'] = {'raw': raw_stats, 'structured': struct_stats}
+                structured = cleaned_struct
                 
             except Exception as scrape_err:
                 structured = {

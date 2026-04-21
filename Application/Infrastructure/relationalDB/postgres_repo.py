@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from Domain.course import Chapter
 
 class PostgresRepository:
-    def __init__(self, dbname: str, user: str, password: str, host: str = "localhost", port: int = 5433):
+    def __init__(self, dbname: str, user: str, password: str, host: str = "localhost", port: int = 5432):
         self.conn_params = {
             'dbname': dbname,
             'user': user,

@@ -11,7 +11,7 @@ DB_PARAMS = {
     "user": "postgres",
     "password": "password123",
     "host": "localhost",
-    "port": 5433,
+    "port": 5432,
 }
 
 

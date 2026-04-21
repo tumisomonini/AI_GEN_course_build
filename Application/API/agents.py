@@ -10,18 +10,22 @@ load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
 def initialize_real_agents():
     """Initialize agents with production settings"""
-    neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, _astra_repo
+    
+    raw_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    neo4j_uri = sanitize_neo4j_uri(raw_uri)
     neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
     neo4j_password = os.getenv("NEO4J_PASSWORD")
-    neo4j_database = os.getenv("NEO4J_DATABASE")
+    neo4j_database = os.getenv("NEO4J_DATABASE", "neo4j")
 
-    # Relational repo for agent logging
-    from Application.Ports.postgres_repo import PostgresRepo
-    repo = PostgresRepo()
+    # Use pre-initialized repos from lifespan to avoid redundant connection failures
+    repo = _postgres_repo
+    if repo is None:
+        print("⚠️ Warning: AuthorAgent initialized without Postgres logging (Repo Down)")
 
-    # Astra vector store (required for AuthorAgent RAG)
-    from Application.Infrastructure.vectorDb.Astra_vector_store import AstraVectorStore
-    vector_store = AstraVectorStore(collection_name="course_chunks")
+    vector_store = _astra_repo
+    if vector_store is None:
+        print("⚠️ Warning: AuthorAgent initialized without RAG capabilities (Astra Down)")
 
     # Initialize real agents
     from Application.Agents.Planner_agent import PlannerAgent

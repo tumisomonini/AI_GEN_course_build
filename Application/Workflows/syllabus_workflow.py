@@ -9,6 +9,7 @@ from Application.Agents.Planner_agent import PlannerAgent
 from Application.Agents.Author_agent import AuthorAgent
 from Application.Agents.Reviewer_agent import ReviewerAgent
 from Application.Agents.Assembler_agent import AssemblerAgent
+from Application.Infrastructure.ETL.cleaner import clean_syllabus_dict, log_cleaning_stats
 from Application.Ports.scraper import scrape_relevant_syllabi
 from Application.Ports.Astra_repo import AstraRepo
 from Application.Ports.postgres_repo import PostgresRepo
@@ -44,8 +45,15 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
     # Extract topics from best syllabus dict
     top_syllabus = next((s for s in syllabi if 'error' not in s and s.get('main_topics')), None)
     raw_topics = top_syllabus.get('main_topics', [])[:10] if top_syllabus else []
-    # Filter to topics with at least 2 words (skip junk)
-    clean_topics = [t for t in raw_topics if len(str(t).split()) >= 2]
+    
+    # ETL: Comprehensive cleaning replaces simple filter
+    if '_cleaning_stats' in top_syllabus:
+        print(f"📊 Pre-cleaned topics: {len(raw_topics)}, stats: {top_syllabus['_cleaning_stats']}")
+    
+    cleaned_topics_dict, stats = clean_syllabus_dict({'main_topics': raw_topics})
+    clean_topics = cleaned_topics_dict.get('main_topics', [])
+    log_cleaning_stats({'workflow': stats}, 'workflow')
+    
     if not clean_topics:
         # Generate sensible default topics from the course title
         words = state.title.split()
@@ -217,6 +225,15 @@ def create_outline_workflow(title: str, level: str = "beginner", duration_months
     from ..API.agents import get_real_agents
     agents = get_real_agents()
     
+    # Safety/Intent Gate
+    reviewer = agents["reviewer"]
+    # We wrap this in a run_async or similar if needed
+    loop = asyncio.get_event_loop()
+    check = loop.run_until_complete(reviewer.check_intent_and_safety(title))
+    if not check.get('is_valid') or not check.get('is_safe'):
+        print(f"🛑 Query Rejected: {check.get('reason')}")
+        return {"title": title, "status": "failed", "error": check.get('reason')}
+
     graph = StateGraph(OutlineState)
     def scrape_to_dict(s):
         result = scrape_node(SyllabusState.model_validate(s))

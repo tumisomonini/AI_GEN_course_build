@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from Application.API.Main import app
 import os
 import time
+from Application.Ports.Astra_repo import AstraRepo
 
 client = TestClient(app)
 
@@ -32,11 +33,19 @@ class TestRAGIntegration:
 
         print("RAG system fully tested via API endpoints!")
 
-    def test_rag_retrieval(self):
-        # Test direct retrieval (Astra RAG component)
-        # Assume agent uses it, or add endpoint if exists
-        print("RAG retrieval tested indirectly via workflow")
+    def test_vector_retrieval_accuracy(self):
+        """Unit test for retrieval precision."""
+        repo = AstraRepo("course_chunks")
+        test_query = "Python Decorators"
+        results = repo.similarity_search(test_query, k=3)
+        
+        assert isinstance(results, list)
+        if len(results) > 0:
+            # Ensure metadata exists
+            assert "course_title" in results[0] or "source_url" in results[0]
+            print(f"✅ Retrieval successful: Found {len(results)} chunks for '{test_query}'")
+        else:
+            pytest.skip("No data in AstraDB to test retrieval accuracy. Run populate_all_dbs.py first.")
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

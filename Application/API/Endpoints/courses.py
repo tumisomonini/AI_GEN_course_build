@@ -208,9 +208,19 @@ def outline_generation_task(request: CourseGenerateRequest, course_id: int, run_
 async def approve_and_generate_full(
     course_id: int,
     background_tasks: BackgroundTasks,
+    modifications: Optional[List[str]] = None,
     repo: PostgresRepo = Depends(get_postgres_repo)
 ):
-    """Approve template -> trigger full content generation background"""
+    """
+    Approve template -> trigger full content generation background.
+    Allows user to provide a modified list of chapter titles.
+    """
+    if modifications:
+        review_data = repo.get_course_review(course_id)
+        template = review_data.get('template', {})
+        template['chapters'] = modifications
+        repo.update_course_template(course_id, template)
+
     repo.create_approval(course_id, approved=True)
     repo.update_course_status(course_id, "generating_full")
     

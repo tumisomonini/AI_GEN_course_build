@@ -11,7 +11,7 @@ from pathlib import Path
 from Application.API.Endpoints.syllabus import router as syllabus_router
 from Application.API.Endpoints.courses import router as courses_router
 from Application.API.Endpoints.session import router as session_router
-from Application.API.dependencies import get_postgres_repo, get_astra_repo, get_neo4j_repo
+from Application.API.dependencies import get_postgres_repo, get_astra_repo, get_neo4j_repo, sanitize_neo4j_uri
 from Application.API.agents import get_real_agents
 from Application.Ports.postgres_repo import PostgresRepo
 from Application.Ports.Astra_repo import AstraRepo
@@ -20,33 +20,51 @@ from Application.Ports.neo4j_repo import Neo4jRepository as Neo4jRepoImpl
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Init repos
-    print("🚀 Starting DB connections...")
+    print("🚀 Starting full infrastructure...")
     import Application.API.dependencies as deps
+    from Domain.knowledge_graphy import KnowledgeGraph
     
-    deps._postgres_repo = PostgresRepo()
+    try:
+        deps._postgres_repo = PostgresRepo()
+        # Explicit schema verification
+        deps._postgres_repo.init_schema()
+        print("✅ Postgres ready with schema")
+    except Exception as e:
+        deps._postgres_repo = None
+        print(f"⚠️ Postgres skipped/failed: {e}")
+
     if os.getenv("ASTRA_DB_APPLICATION_TOKEN"):
         deps._astra_repo = AstraRepo()
+        print("✅ AstraDB ready")
     else:
         deps._astra_repo = None
-        print("⚠️ Astra repo skipped (token not set)")
-    deps._neo4j_repo = Neo4jRepoImpl(
-        os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
-        os.getenv('NEO4J_USERNAME', 'neo4j'),
-        os.getenv('NEO4J_PASSWORD'),
-        os.getenv('NEO4J_DATABASE')
-    )
-    # Optional: _postgres_repo.init_schema()
-    print("✅ All DB repos initialized")
+        print("⚠️ Astra skipped - set ASTRA_DB_APPLICATION_TOKEN")
+    
+    # Use centralized init for consistency
+    deps.init_neo4j_singleton()
+    
+    # Auto-populate Neo4j sample data using the shared driver
+    if deps._neo4j_repo:
+        try:
+            kg = KnowledgeGraph(deps._neo4j_repo.driver, database)
+            kg.add_topic("Python Basics", "Fundamental syntax and data types")
+            kg.add_topic("Data Structures", "Lists, dicts, sets")
+            kg.add_prerequisite("Data Structures", "Python Basics")
+            print("✅ Neo4j populated with sample KG data")
+        except Exception as e:
+            print(f"⚠️ Neo4j population skipped: {e}")
+    
+    print("✅ Infrastructure fully initialized")
     
     yield
     
     # Shutdown
-    print("🔌 Closing DB connections...")
+    print("🔌 Closing connections...")
     if deps._postgres_repo:
         deps._postgres_repo.close()
     if deps._neo4j_repo:
         deps._neo4j_repo.close()
-    print("✅ DBs closed")
+    print("✅ Shutdown complete")
 
 app = FastAPI(
     title="🚀 AI Course Builder API",
@@ -89,7 +107,7 @@ app.include_router(session_router, prefix="/session", tags=["Session"])
 @app.get("/")
 async def root():
     """Redirect to test interface"""
-    return RedirectResponse(url="/Pages/test_interface.html")
+    return RedirectResponse(url="/Pages/dashboard.html")
 
 @app.websocket("/ws/health")
 async def websocket_health_check(websocket: WebSocket):
@@ -110,22 +128,63 @@ async def health(
 ):
     """Full system health: DBs + agents."""
     try:
-        # DB pings
-        with pg.get_cursor() as cur:
-            cur.execute("SELECT 1")
-            cur.fetchone()
-        pg_status = {'status': 'ready', 'message': 'Postgres connected'}
+        # Postgres health
+        if pg:
+            try:
+                # Simple ping to verify connectivity
+                with pg.get_cursor() as cur:
+                    cur.execute("SELECT 1")
+                pg_status = {'status': 'ready', 'message': 'Postgres connected'}
+            except Exception as e:
+                pg_status = {'status': 'error', 'message': str(e)}
+        else:
+            pg_status = {'status': 'down', 'message': 'Not initialized'}
 
-        astra_status = {'status': 'ready', 'collection_count': len(astra.similarity_search('test', k=1))}
-        neo4j_status = {'topics_count': len(list(neo4j._session().run('MATCH (t:Topic) RETURN t LIMIT 1')))}
+        # Astra health
+        if astra:
+            try:
+                # Safeguard against uninitialized vector_store within AstraRepo
+                if not hasattr(astra, 'vector_store') or astra.vector_store is None:
+                    astra_status = {'status': 'down', 'message': 'Vector store not initialized'}
+                elif not os.getenv("ASTRA_DB_APPLICATION_TOKEN"):
+                    astra_status = {'status': 'error', 'message': 'Missing Astra Token in environment'}
+                else:
+                    # Perform a lightweight check without full similarity search if possible, 
+                    # or a very specific test query.
+                    try:
+                        results = astra.similarity_search('test', k=1)
+                        astra_status = {'status': 'ready', 'collection_count': len(results) if results is not None else 0}
+                    except AttributeError:
+                        astra_status = {'status': 'error', 'message': 'Astra driver misconfigured (NoneType error)'}
+            except Exception as e:
+                astra_status = {'status': 'error', 'message': str(e)}
+        else:
+            astra_status = {'status': 'down', 'message': 'Not initialized'}
+        
+        # Neo4j health
+        if neo4j:
+            try:
+                database = os.getenv('NEO4J_DATABASE', 'neo4j')
+                with neo4j.driver.session(database=database) as session:
+                    result = list(session.run('RETURN 1'))  # Basic ping first
+                    result2 = list(session.run('MATCH (t:Topic) RETURN t LIMIT 1'))
+                    neo4j_status = {'status': 'ready', 'topics_count': len(result2)}
+            except Exception as e:
+                neo4j_status = {'status': 'error', 'message': str(e)}
+        else:
+            neo4j_status = {'status': 'down', 'message': 'Not initialized'}
         
         # Agents
-        agents = get_real_agents()
+        try:
+            agents = get_real_agents()
+            agent_status = 'ready'
+        except Exception as e:
+            agent_status = f'degraded: {str(e)}'
         
         return {
-            'status': 'healthy',
+            'status': 'healthy' if all(s.get('status') != 'error' for s in [pg_status, astra_status, neo4j_status]) else 'degraded',
             'dbs': {'postgres': pg_status, 'astra': astra_status, 'neo4j': neo4j_status},
-            'agents': 'real',
+            'agents': agent_status,
             'pipeline': 'fully_integrated'
         }
     except Exception as e:

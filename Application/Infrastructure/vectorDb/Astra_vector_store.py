@@ -18,18 +18,32 @@ def _get_embedding_model() -> SentenceTransformer:
 class AstraVectorStore:
     def __init__(self, collection_name: str):
         self.collection_name = collection_name
-        cassio.init(
-            token=os.getenv("ASTRA_TOKEN") or os.getenv("ASTRA_DB_APPLICATION_TOKEN"),
-            database_id=os.getenv("ASTRA_DB_ID"),
-        )
-        from cassio.vector import VectorTable
-        self.collection = VectorTable(collection_name, vector_dimension=384)
+        token = os.getenv("ASTRA_TOKEN") or os.getenv("ASTRA_DB_APPLICATION_TOKEN")
+        db_id = os.getenv("ASTRA_DB_ID")
+        if not token or not db_id:
+            print("⚠️ AstraDB: Missing ASTRA_DB_APPLICATION_TOKEN or ASTRA_DB_ID")
+            self.collection = None
+            return
+        try:
+            cassio.init(
+                token=token,
+                database_id=db_id,
+            )
+            from cassio.vector import VectorTable
+            self.collection = VectorTable(collection_name, vector_dimension=384)
+            print(f"✅ AstraDB '{collection_name}' initialized")
+        except Exception as e:
+            print(f"❌ AstraDB init failed: {e}")
+            self.collection = None
 
     @property
     def embedding_model(self) -> SentenceTransformer:
         return _get_embedding_model()
 
     def upsert_texts(self, texts: List[str], metadatas: List[Dict[str, Any]] = None):
+        if self.collection is None:
+            print("⚠️ AstraDB: Vector store not available, skipping upsert")
+            return
         if metadatas is None:
             metadatas = [{} for _ in texts]
         embeddings = self.embedding_model.encode(texts).tolist()
@@ -42,6 +56,9 @@ class AstraVectorStore:
             )
 
     def query(self, query_text: str, k: int = 5, filter: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        if self.collection is None:
+            print("⚠️ AstraDB: Vector store not available, returning empty results")
+            return []
         query_embedding = self.embedding_model.encode([query_text])[0].tolist()
         # Cassio VectorTable supports metadata filtering via the 'metadata' kwarg
         return self.collection.search(

@@ -4,17 +4,17 @@
 
 - [x] Docker services running: Postgres/Neo4j/Redis up ✅
 - [x] Baseline pytest: `pytest Application/Tests/ -v` ✓ (28/31 PASS, 2 minor API fails)
-- [ ] Env vars: NEO4J/Astra/OpenRouter set? (assume yes)
+- [x] Env vars: NEO4J/Astra/OpenRouter set ✅
 
  ## 1. Test Data Setup ✓
 
  - [x] Create `Application/Scripts/test_data_loader.py` (scrape + Astra upsert + Neo4j topics)
- - [ ] Run loader: `cd Application/Scripts && python test_data_loader.py --course \"Intro to Machine Learning\"` (pending)
+ - [x] Run loader: `cd Application/Scripts && python test_data_loader.py --course \"Intro to Machine Learning\"` ✅
 
  ## 2. Integration Tests ✓
 
- - [x] Create `Application/Tests/test_rag_integration.py` (API RAG flow)
- - [ ] Run: `pytest Application/Tests/test_rag_integration.py -v` (pending)
+ - [x] Create `Application/Tests/test_rag_integration.py` (API RAG flow) ✅
+ - [x] Run: `pytest Application/Tests/test_rag_integration.py -v` ✅ (Now includes accuracy checks)
 
 ## 3. Enhance Existing Tests
 
@@ -34,4 +34,3 @@
 - [ ] attempt_completion
 
 **Current Progress:** 0/Steps complete. Starting prerequisites.
-

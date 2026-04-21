@@ -1,6 +1,7 @@
 from typing import Dict, List
 import argparse
 import os
+from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabus_dict, log_cleaning_stats
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 from Application.Ports.scraper import parse_syllabus, scrape_relevant_syllabi
@@ -15,13 +16,17 @@ def scrape_and_structure(url: str = None, file_path: str = None, query: str = No
         top_syllabus = next((s for s in syllabi if not hasattr(s, 'issues') or not s.issues), None)
         structured = top_syllabus if top_syllabus else Syllabus(title="No syllabus found", course=Course(title="Empty", audience="general", outcomes=[]), chapters=[])
     elif url:
-        raw_syllabus = scrape_web_syllabus(url)
-        structured_dict = parse_syllabus(raw_syllabus)
-        structured = Syllabus.from_scraped_dict(structured_dict)
+        cleaned_raw, raw_stats = clean_raw_text(scrape_web_syllabus(url))
+        log_cleaning_stats(raw_stats, 'raw')
+        structured_dict = parse_syllabus(cleaned_raw)
+        cleaned_struct, struct_stats = clean_syllabus_dict(structured_dict)
+        structured = Syllabus.from_scraped_dict(cleaned_struct)
     elif file_path:
-        raw_syllabus = scrape_pdf_syllabus(file_path)
-        structured_dict = parse_syllabus(raw_syllabus)
-        structured = Syllabus.from_scraped_dict(structured_dict)
+        cleaned_raw, raw_stats = clean_raw_text(scrape_pdf_syllabus(file_path))
+        log_cleaning_stats(raw_stats, 'raw')
+        structured_dict = parse_syllabus(cleaned_raw)
+        cleaned_struct, struct_stats = clean_syllabus_dict(structured_dict)
+        structured = Syllabus.from_scraped_dict(cleaned_struct)
     else:
         raise ValueError("Provide --url, --file, or --query")
     print("Structured Domain syllabus:", structured.model_dump())

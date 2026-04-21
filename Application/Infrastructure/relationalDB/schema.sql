@@ -1,9 +1,9 @@
--- PostgreSQL Relational Database Schema for AI_GEN_course_build
--- Execute this to initialize the full schema
+-- PostgreSQL Relational Database Schema for AI_GEN_course_build (Idempotent)
+-- Safe to run multiple times: uses CREATE TABLE IF NOT EXISTS
 
 -- 1. Core Tables
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     course_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
@@ -24,7 +24,7 @@ CREATE TABLE courses (
     status VARCHAR(50) DEFAULT 'draft'  -- draft, published, archived
 );
 
-CREATE TABLE chapters (
+CREATE TABLE IF NOT EXISTS chapters (
     chapter_id SERIAL PRIMARY KEY,
     course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE chapters (
     status VARCHAR(50) DEFAULT 'draft'  -- draft, reviewed, approved
 );
 
-CREATE TABLE syllabus (
+CREATE TABLE IF NOT EXISTS syllabus (
     syllabus_id SERIAL PRIMARY KEY,
     course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
     content JSONB NOT NULL,  -- Structured syllabus data
@@ -46,7 +46,7 @@ CREATE TABLE syllabus (
 
 -- 2. Workflow and Agent Tables
 
-CREATE TABLE runs (
+CREATE TABLE IF NOT EXISTS runs (
     run_id SERIAL PRIMARY KEY,
     course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
     workflow_name VARCHAR(255) NOT NULL,  -- e.g., "syllabus_generation"
@@ -55,7 +55,7 @@ CREATE TABLE runs (
     status VARCHAR(50) DEFAULT 'running'  -- running, completed, failed
 );
 
-CREATE TABLE run_agents (
+CREATE TABLE IF NOT EXISTS run_agents (
     run_agent_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     agent_name VARCHAR(255) NOT NULL,  -- e.g., "planner_agent"
@@ -64,7 +64,7 @@ CREATE TABLE run_agents (
     status VARCHAR(50) DEFAULT 'running'  -- running, completed, failed
 );
 
-CREATE TABLE logs (
+CREATE TABLE IF NOT EXISTS logs (
     log_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     agent_name VARCHAR(255),
@@ -75,7 +75,7 @@ CREATE TABLE logs (
 
 -- 3. Approval and Review Tables
 
-CREATE TABLE approvals (
+CREATE TABLE IF NOT EXISTS approvals (
     approval_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     chapter_id INT REFERENCES chapters(chapter_id) ON DELETE CASCADE,
@@ -85,7 +85,7 @@ CREATE TABLE approvals (
     approved_at TIMESTAMP
 );
 
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     review_id SERIAL PRIMARY KEY,
     chapter_id INT REFERENCES chapters(chapter_id) ON DELETE CASCADE,
     reviewer_id INT REFERENCES users(user_id),
@@ -95,7 +95,7 @@ CREATE TABLE reviews (
 
 -- 4. Metrics and Performance Tables
 
-CREATE TABLE metrics (
+CREATE TABLE IF NOT EXISTS metrics (
     metric_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     agent_name VARCHAR(255),
@@ -104,7 +104,7 @@ CREATE TABLE metrics (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE costs (
+CREATE TABLE IF NOT EXISTS costs (
     cost_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     agent_name VARCHAR(255),
@@ -115,7 +115,7 @@ CREATE TABLE costs (
 
 -- 5. Sessions Table (NEW)
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     session_id VARCHAR(64) PRIMARY KEY,
     course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -126,7 +126,7 @@ CREATE INDEX idx_sessions_expires ON sessions(expires_at);
 
 -- 6. Artifact and Export Tables
 
-CREATE TABLE artifacts (
+CREATE TABLE IF NOT EXISTS artifacts (
     artifact_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     artifact_type VARCHAR(50) NOT NULL,  -- e.g., "pdf", "docx"
@@ -134,7 +134,7 @@ CREATE TABLE artifacts (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE exports (
+CREATE TABLE IF NOT EXISTS exports (
     export_id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
     artifact_id INT REFERENCES artifacts(artifact_id) ON DELETE CASCADE,

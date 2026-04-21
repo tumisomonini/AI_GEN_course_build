@@ -1,63 +1,56 @@
 #!/usr/bin/env python3
-"""Test data loader for RAG testing."""
-
-import os
+"""Test data loader for RAG system: scrape → Astra upsert → Neo4j topics"""
 import argparse
-from pathlib import Path
+import os
 from dotenv import load_dotenv
+load_dotenv()
+
 from Application.Ports.scraper import scrape_relevant_syllabi
 from Application.Ports.Astra_repo import AstraRepo
-from Application.Infrastructure.graphDb.neo4j_repo import Neo4jRepository
+from Application.Ports.neo4j_repo import Neo4jRepository
+from Domain.syllabus import Syllabus, Chapter
+from Domain.course import Chapter
 
-load_dotenv(Path(__file__).resolve().parents[2] / '.env')
-
-def load_test_data(course_title: str):
-    print(f'Loading test data for \\"{course_title}\\"')
+def load_test_data(course_query: str = "Introduction to Machine Learning"):
+    print(f"🚀 Loading test data for: {course_query}")
     
-    # 1. Scrape syllabi
-    syllabi = scrape_relevant_syllabi(course_title, max_results=3)
-    print(f'Found {len([s for s in syllabi if "error" not in s])} syllabi')
-    
-    # 2. Flatten to chunks for Astra
-    all_texts = []
-    all_metadatas = []
-    for syllabus in syllabi:
-        if 'error' not in syllabus:
-            for section, chunks in syllabus.items():
-                if isinstance(chunks, list):
-                    for chunk in chunks:
-                        all_texts.append(chunk)
-                        all_metadatas.append({
-                            'course_title': course_title,
-                            'section': section,
-                            'type': 'test_rag_chunk',
-                            'source': syllabus.get('source_url', '')
-                        })
-    
-    # Upsert to Astra test collection
-    if all_texts:
-        astra_repo = AstraRepo('course_chunks')
-        astra_repo.upsert_syllabus_chunks(all_texts[:50], all_metadatas[:50])  # limit
-        print(f'✅ Upserted {len(all_texts[:50])} chunks to Astra course_chunks')
+    # 1. Scrape syllabus
+    print("🔍 Scraping syllabi...")
+    syllabi_raw = scrape_relevant_syllabi(course_query)
+    if not syllabi_raw or 'error' in syllabi_raw[0]:
+        print("❌ No syllabi found, using mock data")
+        syllabus = Syllabus(title="Mock ML Syllabus", chapters=[
+            Chapter(title="Intro", content="Machine learning basics: supervised, unsupervised..."),
+            Chapter(title="Neural Nets", content="Backpropagation, layers, activation functions...")
+        ])
     else:
-        print('⚠️ No texts to upsert - scraper may have failed')
+        syllabus = Syllabus.from_scraped_dict(syllabi_raw[0])
     
-    # 3. Populate Neo4j with basic topics
-    neo4j_uri = 'bolt://localhost:7687'
-    neo4j_user = 'neo4j'
-    neo4j_pass = 'password'
-    repo = Neo4jRepository(neo4j_uri, neo4j_user, neo4j_pass)
-    topics = ['Introduction', 'Machine Learning Basics', 'Neural Networks']
+    # 2. Upsert to Astra for RAG
+    print("📤 Upserting to AstraDB...")
+    astra_repo = AstraRepo(collection_name="rag_test_chunks")
+    texts = [ch.content for ch in syllabus.chapters if ch.content]
+    metadatas = [{"course": course_query, "chapter": ch.title} for ch in syllabus.chapters]
+    astra_repo.upsert_syllabus_chunks(texts, metadatas)
+    print(f"✅ {len(texts)} chunks in AstraDB")
+    
+    # 3. Add topics to Neo4j (for planner)
+    print("🗺️ Adding to Neo4j...")
+    neo4j_repo = Neo4jRepository(
+        uri=os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
+        user=os.getenv('NEO4J_USER'),
+        password=os.getenv('NEO4J_PASSWORD')
+    )
+    topics = [ch.title for ch in syllabus.chapters]
     for topic in topics:
-        repo.add_topic(topic)
-        repo.add_prerequisite(topic, 'Introduction')  # dummy prereq
-    repo.close()
-    print('✅ Populated Neo4j with test topics graph')
+        neo4j_repo.add_topic_graph(topic, related_topics=[])
+    print(f"✅ {len(topics)} topics in Neo4j")
     
-    print('Test data loaded! Ready for RAG tests.')
+    print("✅ Test data loaded! Ready for RAG testing.")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--course', default='Introduction to Machine Learning', help='Course title to scrape')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Load test data for RAG")
+    parser.add_argument("--course", default="Introduction to Machine Learning")
     args = parser.parse_args()
     load_test_data(args.course)
+

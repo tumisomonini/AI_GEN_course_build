@@ -12,22 +12,13 @@ class KnowledgeGraph:
     A class to interact with the Neo4j knowledge graph for course topics and prerequisites.
     """
 
-    def __init__(self, uri: str, user: str, password: str):
+    def __init__(self, driver: GraphDatabase.driver, database: str = "neo4j"):
         """
-        Initialize the KnowledgeGraph with Neo4j connection details.
-
-        Args:
-            uri (str): The URI of the Neo4j database
-            user (str): The username for the Neo4j database
-            password (str): The password for the Neo4j database
+        Initialize the KnowledgeGraph with an existing Neo4j driver.
         """
-        self._driver = GraphDatabase.driver(uri, auth=(user, password))
-        logger.info("KnowledgeGraph initialized with connection to Neo4j")
-
-    def close(self):
-        """Close the Neo4j driver connection."""
-        self._driver.close()
-        logger.info("KnowledgeGraph connection closed")
+        self._driver = driver
+        self._database = database
+        logger.info("KnowledgeGraph initialized with shared driver")
 
     def add_topic(self, topic_name: str, description: str = "") -> bool:
         """
@@ -41,7 +32,7 @@ class KnowledgeGraph:
             bool: True if the topic was added successfully, False otherwise
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MERGE (t:Topic {name: $topic_name})
@@ -69,7 +60,7 @@ class KnowledgeGraph:
             bool: True if the relationship was added successfully, False otherwise
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (a:Topic {name: $topic_name})
@@ -96,7 +87,7 @@ class KnowledgeGraph:
             List[str]: A list of prerequisite topic names
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (a:Topic {name: $topic_name})-[:PREREQUISITE]->(b:Topic)
@@ -120,7 +111,7 @@ class KnowledgeGraph:
             List[str]: A list of topic names that depend on the given topic
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (a:Topic)-[:PREREQUISITE]->(b:Topic {name: $topic_name})
@@ -141,11 +132,11 @@ class KnowledgeGraph:
             List[Dict[str, str]]: A list of dictionaries containing topic information
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (t:Topic)
-                    RETURN t.name AS name, t.description AS description
+                    RETURN t.name AS name, coalesce(t.description, "") AS description
                     """
                 )
                 return [{"name": record["name"], "description": record["description"]} for record in result]
@@ -196,7 +187,7 @@ class KnowledgeGraph:
             for name in topic_names:
                 G.add_node(name)
 
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 # Fetch all relevant prerequisite relationships within the set of requested topics
                 result = session.run(
                     """
@@ -232,7 +223,7 @@ class KnowledgeGraph:
             bool: True if all prerequisites are satisfied, False otherwise
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 for i, topic in enumerate(topic_order):
                     result = session.run(
                         """
@@ -264,14 +255,14 @@ class KnowledgeGraph:
         """
         graph = {}
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 # Get prerequisites
                 for current_depth in range(1, depth + 1):
                     result = session.run(
                         """
-                        MATCH path = (a:Topic {{name: $topic_name}})-[:PREREQUISITE*1..{current_depth}]->(b:Topic)
+                        MATCH path = (a:Topic {name: $topic_name})-[:PREREQUISITE*1..$depth]->(b:Topic)
                         RETURN a.name AS source, b.name AS target
-                        """ % current_depth,
+                        """,
                         topic_name=topic_name,
                         depth=current_depth
                     )
@@ -287,11 +278,12 @@ class KnowledgeGraph:
                 # Get dependencies
                 for current_depth in range(1, depth + 1):
                     result = session.run(
-                        f"""
-                        MATCH path = (a:Topic)-[:PREREQUISITE*1..{current_depth}]->(b:Topic {{name: $topic_name}})
+                        """
+                        MATCH path = (a:Topic)-[:PREREQUISITE*1..$depth]->(b:Topic {name: $topic_name})
                         RETURN a.name AS source, b.name AS target
                         """,
-                        topic_name=topic_name
+                        topic_name=topic_name,
+                        depth=current_depth
                     )
                     for record in result:
                         source = record["source"]
@@ -319,7 +311,7 @@ class KnowledgeGraph:
             List[str]: A list of related topic names
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (a:Topic {name: $topic_name})-[:RELATED_TO*1..2]-(b:Topic)
@@ -347,7 +339,7 @@ class KnowledgeGraph:
             bool: True if the relationship was added successfully, False otherwise
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (a:Topic {name: $topic_name})
@@ -375,11 +367,11 @@ class KnowledgeGraph:
             Optional[Dict[str, str]]: A dictionary with topic details, or None if not found
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self._database) as session:
                 result = session.run(
                     """
                     MATCH (t:Topic {name: $topic_name})
-                    RETURN t.name AS name, t.description AS description
+                    RETURN t.name AS name, coalesce(t.description, "") AS description
                     """,
                     topic_name=topic_name
                 )
