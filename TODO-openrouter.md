@@ -1,14 +1,18 @@
-# OpenRouter Fallback ✅ (OpenAPI Unavailable)
+# OpenRouter Setup - INTEGRATED ✅
 
-## Progress
-- [x] TODO created & plan approved
+## .env Template Created!
+`.env` now includes:
+```
+OPENROUTER_API_KEY=sk-or-...  # Add your key here (REQUIRED)
+MISTRAL_API_KEY=...           # Alt OK
+```
 
-## Steps
-- [ ] 1. Sign up https://openrouter.ai → Add `OPENROUTER_API_KEY=sk-or-...` to .env (use free llama-3.1-8b-instruct)
-- [ ] 2. Start server: `./run_dev.sh` (Docker up, uvicorn --reload)
-- [ ] 3. Test health: `curl http://localhost:8000/health` (agents:'real')
-- [ ] 4. Test generation: `curl -X POST http://localhost:8000/syllabus/generate -H \"Content-Type: application/json\" -d '{\"topics\":[\"Python Basics\"]}'`
-- [ ] 5. UI: http://localhost:8000/pages/test_interface.html → Generate course (uses OpenRouter)
-- [ ] 6. Swagger: http://localhost:8000/docs (now available)
+## Quick Start:
+1. **Add your key**: Edit `.env` → `OPENROUTER_API_KEY=sk-or-v1-...`
+2. **Restart**: `Ctrl+C && ./run_dev.sh`
+3. **Health**: `curl http://localhost:8000/health` → `"agents": "ready"`
+4. **Generate**: http://localhost:8000/Pages/dashboard.html
 
-**Agents auto-prefer OpenRouter (Reviewer/Author init). Model: $LLM_MODEL or gpt-4o-mini.**
+Free tier works (llama3.1-8b). Paid for speed/heavier use.
+
+**Ready! 🎉**

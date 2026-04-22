@@ -18,10 +18,7 @@ try:
 except ImportError:
     scrape_relevant_syllabi = lambda title, max_results: []
 
-try:
-    from Application.Ports.Astra_repo import AstraRepo
-except ImportError:
-    AstraRepo = None
+
 
 class SyllabusRequest(BaseModel):
     topics: List[str] = ["Intro to Python", "Advanced Python"]
@@ -55,9 +52,7 @@ async def scrape_syllabus(request: ScrapeRequest):
                                 "type": "relevant_syllabus_chunk"
                             })
         
-        if all_texts:
-            astra_repo = AstraRepo("course_chunks")
-            astra_repo.upsert_syllabus_chunks(all_texts, all_metadatas)
+        # Vector store removed; chunks not upserted
         
         return {
             "status": "success",

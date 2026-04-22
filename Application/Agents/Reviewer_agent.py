@@ -79,7 +79,8 @@ class ReviewerAgent:
             res_data = json.loads(response.choices[0].message.content)
             # Calculate an average score
             avg_score = (res_data.get('accuracy', 0) + res_data.get('depth', 0) + res_data.get('clarity', 0)) / 3
-            return {"score": round(avg_score, 2), "feedback": res_data.get('feedback', '')}
+            semantic_pass = avg_score >= 0.6
+            return {"semantic_score": round(avg_score, 2), "semantic_pass": semantic_pass, "feedback": res_data.get('feedback', '')}
         except Exception as e:
             logger.error(f"ReviewerAgent LLM validation failed after retries: {e}")
             return {"score": 0.5, "feedback": "Critique failed after retries."}
@@ -98,10 +99,21 @@ class ReviewerAgent:
 
         prompt = (
             f"Analyze the user request: '{query}'\n"
-            "Determine if this is an educational course topic and if it is safe.\n"
+            "Determine if this is an educational course topic and if it is safe (No PII, no harmful content).\n"
             "Return a JSON object: {'is_valid': bool, 'is_safe': bool, 'reason': string}."
         )
         try:
+            # Privacy: Enhanced PII Regex checks (Email, Phone numbers)
+            pii_patterns = {
+                "Email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+                "Phone": r'\b(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})\b',
+                "Credit_Card": r'\b(?:\d[ -]*?){13,16}\b',
+                "SSN": r'\b\d{3}-\d{2}-\d{4}\b'
+            }
+            for pii_type, pattern in pii_patterns.items():
+                if re.search(pattern, query):
+                    return {"is_valid": False, "is_safe": False, "reason": f"PII ({pii_type}) detected in input."}
+
             response = await self._call_llm(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],

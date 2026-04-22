@@ -44,12 +44,16 @@ class PlannerAgent:
         if self._cached_graph:
             return self._cached_graph
         G = nx.DiGraph()
-        with self.graph_repo.driver.session(database=self.database) as session:
-            result = session.run("MATCH (n:Topic) RETURN n.name AS id")
-            for record in result:
-                G.add_node(record['id'])
-            result = session.run("MATCH (a:Topic)-[:PREREQUISITE]->(b:Topic) RETURN a.name AS source, b.name AS target")
-            for record in result:
-                G.add_edge(record['source'], record['target'])
-        self._cached_graph = G
-        return G
+        try:
+            with self.graph_repo.driver.session(database=self.database) as session:
+                result = session.run("MATCH (n:Topic) RETURN n.name AS id")
+                for record in result:
+                    G.add_node(record['id'])
+                result = session.run("MATCH (a:Topic)-[:PREREQUISITE]->(b:Topic) RETURN a.name AS source, b.name AS target")
+                for record in result:
+                    G.add_edge(record['source'], record['target'])
+            self._cached_graph = G
+            return G
+        except Exception as e:
+            print(f"⚠️ Failed to load Neo4j graph for legacy planner: {e}")
+            return None

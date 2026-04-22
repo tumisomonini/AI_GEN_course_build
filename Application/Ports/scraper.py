@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import json
 import os
+import time
 import redis
 from pathlib import Path
 from dotenv import load_dotenv
@@ -37,7 +38,14 @@ def scrape_technical_website(url: str) -> Dict[str, Any]:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
             )
             page = context.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            for attempt in range(2):
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    break
+                except Exception:
+                    if attempt == 1:
+                        raise
+                    time.sleep(2)
             html_content = page.content()
             browser.close()
             

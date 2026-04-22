@@ -1,6 +1,11 @@
 import os
-import subprocess
+import sys
+from pathlib import Path
 import pandas as pd
+
+# Ensure script can find Application and Domain packages when run directly
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from Application.Ports.postgres_repo import PostgresRepo
 
 def prepare_autotrain_data():
@@ -60,8 +65,11 @@ def get_autotrain_command():
     )
     
     if os.getenv("HF_TOKEN"):
-        cmd += f"--push-to-hub --repo-id your-hf-username/{project_name}"
+        hf_user = os.getenv("HF_USERNAME", "your-hf-username")
+        cmd += f"--push-to-hub --repo-id {hf_user}/{project_name}"
         
+    # Note: This command is intended to be run in a terminal where autotrain-advanced is installed.
+    # It is not automatically executed by this script to allow for user review.
     return cmd
 
 if __name__ == "__main__":

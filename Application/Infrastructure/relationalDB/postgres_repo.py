@@ -340,6 +340,8 @@ CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
             return row[0] if row else None
 
     def log_message(self, run_id: int, agent_name: str, message: str, level: str = 'info') -> None:
+        if not run_id or run_id <= 0:
+            return
         with self.get_cursor() as cur:
             cur.execute(
                 "INSERT INTO logs (run_id, agent_name, message, level) VALUES (%s, %s, %s, %s)",
@@ -412,6 +414,7 @@ CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
         with self.get_cursor() as cur:
             cur.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
             return cur.rowcount
+
 
     def close(self):
         """Close the database connection."""

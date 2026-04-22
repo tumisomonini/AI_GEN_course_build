@@ -12,8 +12,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AuthorAgent:
-    def __init__(self, astra_db, repo=None, kg=None):
-        self.vector_store = astra_db
+    def __init__(self, vector_store, repo=None, kg=None):
+        self.vector_store = vector_store
         self.openai_client = None
         self.repo = repo
         self.kg = kg  # Knowledge Graph (Neo4j)
@@ -109,6 +109,10 @@ class AuthorAgent:
 This course is designed to span {duration} months, so ensure the level of detail is appropriate for this timeframe.
 The target audience is at the {level} level.
 
+COMPLIANCE NOTICE: 
+- Do NOT include PII (emails, phone numbers, or real names) in the content.
+- Strictly avoid generating harmful, biased, or non-educational content.
+
  {grounding_instruction}
  IMPORTANT: For every factual claim made, cite the chunk number used (e.g., [Chunk 1]). 
  If the chunks do not contain enough information, state this clearly rather than hallucinating.
@@ -154,7 +158,7 @@ Approximately {word_count} words."""
         Supports Vector, KG, and Hybrid strategies.
         """
         if not self.vector_store:
-            logger.error("Vector store (AstraDB) is not initialized.")
+            logger.error("Vector store not initialized.")
             return []
             
         filters = {"course_title": course_title} if course_title else {}

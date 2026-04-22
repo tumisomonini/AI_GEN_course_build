@@ -11,8 +11,9 @@ from Application.Agents.Reviewer_agent import ReviewerAgent
 from Application.Agents.Assembler_agent import AssemblerAgent
 from Application.Infrastructure.ETL.cleaner import clean_syllabus_dict, log_cleaning_stats
 from Application.Ports.scraper import scrape_relevant_syllabi
-from Application.Ports.Astra_repo import AstraRepo
 from Application.Ports.postgres_repo import PostgresRepo
+import tenacity
+from tenacity import retry, stop_after_attempt, wait_exponential
 from Domain.course import CourseTemplate, Chapter
 
 class OutlineState(Dict[str, Any]):  # Keep simple dict for cheap outline
@@ -26,20 +27,20 @@ class OutlineState(Dict[str, Any]):  # Keep simple dict for cheap outline
 
 def scrape_node(state: SyllabusState) -> SyllabusState:
     """Enhanced scraping with upsert to Astra"""
+    from Application.API.dependencies import _postgres_repo as repo_logger
     # Skip if topics already exist (e.g. resuming from approved template)
     if state.topics and len(state.topics) > 0:
         return state
 
     run_id = getattr(state, "run_id", 0)
-    repo_logger = PostgresRepo() if run_id else None
     
     msg = f"🔍 Scraping real-world syllabi for '{state.title}'..."
     print(msg)
-    if repo_logger: repo_logger.log_message(run_id, "Scraper", msg)
+    if repo_logger and run_id > 0: repo_logger.log_message(run_id, "Scraper", msg)
 
     syllabi = scrape_relevant_syllabi(state.title, max_results=3)
     
-    if repo_logger:
+    if repo_logger and run_id > 0:
         repo_logger.log_message(run_id, "Scraper", "🌐 Connected to search engine. Analyzing top results...")
     
     # Extract topics from best syllabus dict
@@ -98,12 +99,13 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
 
     if all_texts:
         try:
-            repo = AstraRepo("course_chunks")
+            from Application.API.dependencies import get_astra_repo
+            repo = next(get_astra_repo())
             # Perform the heavy AstraDB upsert in a background thread.
             # This prevents blocking the outline generation, as these chunks
-            # are only needed later by the AuthorAgent.
+            # are only needed later by the AuthorAgent. Now fully thread-safe.
             threading.Thread(target=repo.upsert_syllabus_chunks, args=(all_texts, all_metadatas), daemon=True).start()
-            log_msg = f"📡 Knowledge base update dispatched to background"
+            log_msg = f"📡 Knowledge base update dispatched to background (thread-safe)"
             if repo_logger: repo_logger.log_message(run_id, "AstraDB", log_msg)
             print(log_msg)
         except Exception as e:
@@ -116,16 +118,16 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
 
 def planner_node(state: SyllabusState, planner: PlannerAgent) -> SyllabusState:
     """Generate syllabus order"""
+    from Application.API.dependencies import _postgres_repo as repo_logger
     # Skip if syllabus is already determined
     if state.syllabus and len(state.syllabus) > 0:
         return state
 
     run_id = getattr(state, "run_id", 0)
-    from Application.API.dependencies import _postgres_repo as repo_logger
 
     msg = "📋 Organizing syllabus topics into an optimal learning path..."
     print(msg)
-    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+    if repo_logger and run_id > 0: repo_logger.log_message(run_id, "Planner", msg)
 
     state.syllabus = planner.generate_syllabus(state.topics[:6])
     msg = f"✅ Syllabus organized: {len(state.syllabus)} chapters determined."
@@ -136,9 +138,9 @@ def planner_node(state: SyllabusState, planner: PlannerAgent) -> SyllabusState:
 
 async def author_node(state: SyllabusState, author: AuthorAgent) -> SyllabusState:
     """Generate real chapter content"""
+    from Application.API.dependencies import _postgres_repo as repo_logger
     print("✍️ Generating real chapter content...")
     run_id = getattr(state, "run_id", 0)
-    repo_logger = PostgresRepo() if run_id else None
     
     start_time = time.time()
 
@@ -166,8 +168,8 @@ async def author_node(state: SyllabusState, author: AuthorAgent) -> SyllabusStat
 
 async def reviewer_node(state: SyllabusState, reviewer: ReviewerAgent) -> SyllabusState:
     """Review content quality"""
+    from Application.API.dependencies import _postgres_repo as repo_logger
     run_id = getattr(state, "run_id", 0)
-    repo_logger = PostgresRepo() if run_id else None
 
     msg = "🔍 Performing quality assurance and semantic review..."
     print(msg)
@@ -175,23 +177,34 @@ async def reviewer_node(state: SyllabusState, reviewer: ReviewerAgent) -> Syllab
 
     failed = 0
     chapters = state.chapters or {}
+    semantic_scores = []
     try:
         for topic, content in chapters.items():
-            # Hybrid Review: LLM Critique + Heuristic Safety Checks
+            # 1. Semantic Critique
             critique = await reviewer.validate_content_with_llm(content, topic)
-            score = critique.get("score", 0.0)
-            is_grounded = reviewer.validate_factual_grounding(content)
+            semantic_score = critique.get("semantic_score", 0.0)
+            semantic_pass = critique.get("semantic_pass", False)
+            semantic_scores.append(semantic_score)
+            
+            # 2. Heuristic Grounding & Style
+            is_substantive = reviewer.validate_factual_grounding(content)
             is_styled = reviewer.validate_style(content)
             
-            if score < 0.6 or not is_grounded or not is_styled:
+            # 3. Compliance & Safety Check (Fixes ❌)
+            safety = await reviewer.check_intent_and_safety(content[:1000])
+            is_safe = safety.get("is_safe", True)
+
+            if not semantic_pass or not is_substantive or not is_styled or not is_safe:
                 failed += 1
-                err_msg = f"⚠️ Quality alert for '{topic}': Score={score}, Grounded={is_grounded}, Styled={is_styled}"
+                err_msg = f"⚠️ Quality alert for '{topic}': Score={semantic_score}, Substantive={is_substantive}, Safe={is_safe}"
                 print(err_msg)
                 if repo_logger: repo_logger.log_message(run_id, "Reviewer", err_msg, "warning")
             else:
                 if repo_logger: repo_logger.log_message(run_id, "Reviewer", f"✅ Content verified for '{topic}'")
     
-        state.validated = failed < len(state.chapters) * 0.3
+        state.reviewer_semantic_avg = sum(semantic_scores) / len(semantic_scores) if semantic_scores else 0.0
+        state.semantic_pass_rate = sum(s >= 0.6 for s in semantic_scores) / len(semantic_scores) if semantic_scores else 0.0
+        state.validated = state.semantic_pass_rate >= 0.8 and failed == 0
         res_msg = f"🏁 Review complete: {'PASS' if state.validated else 'NEEDS_WORK'} ({failed}/{len(state.chapters)} issues found)"
         print(res_msg)
         if repo_logger: repo_logger.log_message(run_id, "Reviewer", res_msg)
@@ -202,8 +215,8 @@ async def reviewer_node(state: SyllabusState, reviewer: ReviewerAgent) -> Syllab
 
 def assemble_node(state: SyllabusState, assembler: AssemblerAgent) -> SyllabusState:
     """Assemble final course"""
+    from Application.API.dependencies import _postgres_repo as repo_logger
     run_id = getattr(state, "run_id", 0)
-    repo_logger = PostgresRepo() if run_id else None
 
     msg = "📄 Finalizing course assembly and exporting assets..."
     print(msg)

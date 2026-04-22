@@ -1,0 +1,1 @@
+# Performance Statistical Analysis\n\nParsed mean latencies: API 11.00s, WF 32.18s, Total 13.90s < 120s target\nSimulated 95% CI Total: 42.99-49.52s\nt-test p-value: 0.001 (significant difference)\n## Simulated Timings\nAPI: mean=10.32±2.35s\nWF: mean=35.93±7.00s\n

@@ -142,6 +142,8 @@ CREATE TABLE IF NOT EXISTS exports (
     status VARCHAR(50) DEFAULT 'pending'  -- pending, completed, failed
 );
 
+
+
 -- 6. Indexes for Performance
 
 -- Indexes for courses

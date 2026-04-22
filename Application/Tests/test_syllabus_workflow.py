@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+import asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import pytest
@@ -45,18 +46,19 @@ def mock_assembler():
 def syllabus_workflow(mock_planner, mock_author, mock_reviewer, mock_assembler):
     return create_syllabus_workflow(mock_planner, mock_author, mock_reviewer, mock_assembler)
 
-def test_successful_workflow_execution(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
+@pytest.mark.asyncio
+async def test_successful_workflow_execution(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
     # Setup initial state
     initial_state = SyllabusState(
-        title="Test Course", 
+        title="Test Course",
         topics=["Intro", "Advanced"], 
         syllabus=[], 
         chapters={}, 
         validated=False
     )
-    # Pydantic v2 model_dump() is used for LangGraph compatibility
-    result = syllabus_workflow.invoke(initial_state.model_dump())
-
+    # Use only ainvoke for graphs containing asynchronous nodes (Author/Reviewer)
+    # Removing the redundant synchronous .invoke() which causes "No synchronous function provided" errors.
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
     # Assertions
     assert len(result["syllabus"]) == 2
     assert len(result["chapters"]) == 2
@@ -75,7 +77,8 @@ def test_successful_workflow_execution(syllabus_workflow, mock_planner, mock_aut
     # Verify assembler was called
     mock_assembler.export_to_docx.assert_called_once()
 
-def test_workflow_with_empty_topics(syllabus_workflow):
+@pytest.mark.asyncio
+async def test_workflow_with_empty_topics(syllabus_workflow):
     # Setup initial state with empty topics
     initial_state = SyllabusState(
         title="Empty Topics Course",
@@ -86,14 +89,15 @@ def test_workflow_with_empty_topics(syllabus_workflow):
     )
 
     # Execute workflow
-    result = syllabus_workflow.invoke(initial_state.model_dump())
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     # Assertions for empty topics
     assert len(result["syllabus"]) == 0
     assert len(result["chapters"]) == 0
     assert result["validated"] is False
 
-def test_workflow_with_validation_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
+@pytest.mark.asyncio
+async def test_workflow_with_validation_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
     # Setup reviewer to fail validation
     mock_reviewer.validate_factual_grounding.return_value = False
 
@@ -107,14 +111,15 @@ def test_workflow_with_validation_failure(syllabus_workflow, mock_planner, mock_
     )
 
     # Execute workflow
-    result = syllabus_workflow.invoke(initial_state.model_dump())
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     # Assertions for validation failure
     assert len(result["syllabus"]) == 2
     assert len(result["chapters"]) == 2
     assert result["validated"] is False
 
-def test_workflow_with_author_failure(syllabus_workflow, mock_planner, mock_author):
+@pytest.mark.asyncio
+async def test_workflow_with_author_failure(syllabus_workflow, mock_planner, mock_author):
     # Setup author to fail content generation
     mock_author.generate_content.side_effect = [
         Chapter(title="Intro", content="Detailed content for Intro.", chapter_order=1, status="generated"),
@@ -131,12 +136,13 @@ def test_workflow_with_author_failure(syllabus_workflow, mock_planner, mock_auth
     )
 
     # Execute workflow and expect exception
-    with pytest.raises(Exception) as excinfo:
-        syllabus_workflow.invoke(initial_state.model_dump())
+    with pytest.raises(Exception) as excinfo: # This will now catch the mock exception
+        await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     assert "Failed to generate content" in str(excinfo.value)
 
-def test_workflow_with_reviewer_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
+@pytest.mark.asyncio
+async def test_workflow_with_reviewer_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
     # Setup reviewer to fail validation
     mock_reviewer.validate_factual_grounding.side_effect = [True, False]
     mock_reviewer.validate_style.side_effect = [True, False]
@@ -151,14 +157,15 @@ def test_workflow_with_reviewer_failure(syllabus_workflow, mock_planner, mock_au
     )
 
     # Execute workflow
-    result = syllabus_workflow.invoke(initial_state.model_dump())
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     # Assertions for validation failure
     assert len(result["syllabus"]) == 2
     assert len(result["chapters"]) == 2
     assert result["validated"] is False
 
-def test_workflow_with_assembler_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
+@pytest.mark.asyncio
+async def test_workflow_with_assembler_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
     # Setup assembler to fail
     mock_assembler.export_to_docx.side_effect = Exception("Failed to export document")
 
@@ -172,7 +179,7 @@ def test_workflow_with_assembler_failure(syllabus_workflow, mock_planner, mock_a
     )
 
     # Execute workflow and expect exception
-    with pytest.raises(Exception) as excinfo:
-        syllabus_workflow.invoke(initial_state.model_dump())
+    with pytest.raises(Exception) as excinfo: # This will now catch the mock exception
+        await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     assert "Failed to export document" in str(excinfo.value)

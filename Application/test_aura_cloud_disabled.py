@@ -9,8 +9,14 @@ load_dotenv(env_path)
 
 def test_connection():
     uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USERNAME")
+    if not uri or uri.strip() == "":
+        print("❌ NEO4J_URI missing in .env. Copy .env.example → .env and set Aura URI.")
+        return
+    user = os.getenv("NEO4J_USERNAME", "neo4j")
     password = os.getenv("NEO4J_PASSWORD")
+    if not password:
+        print("❌ NEO4J_PASSWORD missing in .env.")
+        return
 
     print(f"Connecting to {uri}...")
     try:

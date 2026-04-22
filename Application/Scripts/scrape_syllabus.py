@@ -5,7 +5,6 @@ from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabu
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 from Application.Ports.scraper import parse_syllabus, scrape_relevant_syllabi
-from Application.Ports.Astra_repo import AstraRepo
 from Domain.syllabus import Syllabus
 from Domain.course import Course
 

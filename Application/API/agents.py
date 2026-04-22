@@ -10,7 +10,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
 def initialize_real_agents():
     """Initialize agents with production settings"""
-    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, _astra_repo
+    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, get_vector_store
     
     raw_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     neo4j_uri = sanitize_neo4j_uri(raw_uri)
@@ -23,7 +23,7 @@ def initialize_real_agents():
     if repo is None:
         print("⚠️ Warning: AuthorAgent initialized without Postgres logging (Repo Down)")
 
-    vector_store = _astra_repo
+    vector_store = get_vector_store()
     if vector_store is None:
         print("⚠️ Warning: AuthorAgent initialized without RAG capabilities (Astra Down)")
 

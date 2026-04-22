@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from Application.API.Main import app
 import os
 import time
-from Application.Ports.Astra_repo import AstraRepo
+import pytest
 
 client = TestClient(app)
 
@@ -35,9 +35,7 @@ class TestRAGIntegration:
 
     def test_vector_retrieval_accuracy(self):
         """Unit test for retrieval precision."""
-        repo = AstraRepo("course_chunks")
-        test_query = "Python Decorators"
-        results = repo.similarity_search(test_query, k=3)
+        pytest.skip("Vector store removed")
         
         assert isinstance(results, list)
         if len(results) > 0:

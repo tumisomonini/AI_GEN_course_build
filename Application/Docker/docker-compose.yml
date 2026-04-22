@@ -1,4 +1,4 @@
-Uservices:
+services:
   api:
     build:
       context: ../..
@@ -6,7 +6,7 @@ Uservices:
     container_name: course_builder_api
     restart: unless-stopped
     env_file:
-    ports:
+      - ../../.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -14,14 +14,17 @@ Uservices:
       NEO4J_USERNAME: neo4j
       NEO4J_PASSWORD: password
       NEO4J_DATABASE: neo4j
+    ports:
       - "8000:8000"
     volumes:
       - ../../Application:/app/Application
       - ../../Domain:/app/Domain
       - ../../Pages:/app/Pages
     depends_on:
-      - postgres
-      - neo4j
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
     networks:
       - course_net
 
@@ -30,13 +33,7 @@ Uservices:
     container_name: course_builder_db
     restart: always
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DBNAME:-ai_gen_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ai_gen_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
     ports:
@@ -44,29 +41,41 @@ Uservices:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./../Infrastructure/relationalDB/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - course_net
 
-  redis:
-    image: redis:7-alpine
-    container_name: course_redis
-    restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - course_net
+  # redis: (unused - remove if no caching needed)
+  # image: redis:7-alpine
+  # container_name: course_redis
+  # restart: always
+  # ports:
+  #   - "6379:6379"
+  # networks:
+  #   - course_net
 
   neo4j:
     image: neo4j:5.20.0
     container_name: course_neo4j
     restart: always
     environment:
-      NEO4J_AUTH: neo4j/password
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-password}
     ports:
       - "7474:7474"
       - "7687:7687"
     volumes:
       - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-password} neo4j 'RETURN 1;' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - course_net
 
@@ -77,3 +86,4 @@ volumes:
 networks:
   course_net:
     driver: bridge
+

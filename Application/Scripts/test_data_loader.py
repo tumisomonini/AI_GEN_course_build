@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from Application.Ports.scraper import scrape_relevant_syllabi
-from Application.Ports.Astra_repo import AstraRepo
 from Application.Ports.neo4j_repo import Neo4jRepository
 from Domain.syllabus import Syllabus, Chapter
 from Domain.course import Chapter
