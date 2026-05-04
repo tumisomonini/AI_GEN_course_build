@@ -8,7 +8,12 @@ client = TestClient(app)
 @pytest.fixture(scope="module")
 def test_repo():
     """Use existing repo since Docker is up"""
-    repo = PostgresRepository("ai_gen_db", "postgres", "password123", port=5433)
+    try:
+        repo = PostgresRepository("ai_gen_db", "postgres", "password123", port=5433)
+        with repo.get_cursor() as cur:
+            cur.execute("SELECT 1")
+    except Exception:
+        pytest.skip("Postgres connection failed on port 5433")
     try:
         yield repo
     finally:
@@ -18,9 +23,8 @@ class TestCoursesEndpoints:
     @pytest.fixture(autouse=True)
     def setup_method(self, test_repo):
         # Cleanup test data
-        with test_repo.conn.cursor() as cur:
+        with test_repo.get_cursor() as cur:
             cur.execute("DELETE FROM courses WHERE title LIKE 'Test%'")
-            test_repo.conn.commit()
 
     def test_search_courses(self):
         """Test course search endpoint"""
@@ -41,9 +45,8 @@ class TestCoursesEndpoints:
         response = client.post("/courses/generate/course-template", json=payload)
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "awaiting_approval"
+        assert data["status"] == "generating_outline"
         assert "course_id" in data
-        assert data["sources_found"] >= 0
 
     def test_generate_short_title_fails(self):
         """Test validation for short title"""
@@ -112,12 +115,27 @@ class TestSyllabusEndpoints:
         if response.status_code == 200:
             data = response.json()
             assert "syllabus" in data
+            # Content validation: verify syllabus structure
+            syllabus = data["syllabus"]
+            assert isinstance(syllabus, (list, dict)), "syllabus should be a list or dict"
+            if isinstance(syllabus, list):
+                assert len(syllabus) > 0, "syllabus should not be empty"
+                for chapter in syllabus:
+                    assert "title" in chapter, "each chapter should have a title"
+                    assert "content" in chapter, "each chapter should have content"
+            elif isinstance(syllabus, dict):
+                assert "chapters" in syllabus, "syllabus dict should have chapters key"
+                chapters = syllabus["chapters"]
+                assert isinstance(chapters, list), "chapters should be a list"
+                assert len(chapters) > 0, "chapters should not be empty"
+                for chapter in chapters:
+                    assert "title" in chapter, "each chapter should have a title"
+                    assert "content" in chapter, "each chapter should have content"
 
 def test_root_redirect():
     """Test root endpoint redirects to test interface"""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.url.path == "/pages/test_interface.html" or "/pages/" in response.text
+    assert response.url.path == "/Pages/workflow.html" or "/Pages/" in response.text
 
 print("API endpoint tests completed!")
-

@@ -1,0 +1,853 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build
+configfile: pytest.ini
+plugins: typeguard-4.5.1, asyncio-1.3.0, langsmith-0.3.45, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 56 items / 1 deselected / 55 selected
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_search_courses ERROR [  1%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template ERROR [  3%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_short_title_fails ERROR [  5%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_no_title_fails ERROR [  7%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_duration_fails ERROR [  9%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_level_fails ERROR [ 10%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_get_course_review ERROR [ 12%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_course_status ERROR [ 14%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus PASSED [ 16%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus FAILED [ 18%]
+Application/Tests/test_api.py::test_root_redirect PASSED                 [ 20%]
+Application/Tests/test_author_agent.py::test_author_generate_content PASSED [ 21%]
+Application/Tests/test_db_health.py::test_triple_db_manager FAILED       [ 23%]
+Application/Tests/test_db_health.py::test_check_all_dbs_healthy FAILED   [ 25%]
+Application/Tests/test_db_health.py::test_postgres_singleton PASSED      [ 27%]
+Application/Tests/test_db_health.py::test_neo4j_singleton FAILED         [ 29%]
+Application/Tests/test_frontend_api_interactivity.py::test_flow FAILED   [ 30%]
+Application/Tests/test_neo4j_sync.py::test_build_config_local PASSED     [ 32%]
+Application/Tests/test_neo4j_sync.py::test_build_config_cloud PASSED     [ 34%]
+Application/Tests/test_neo4j_sync.py::test_build_config_missing_raises PASSED [ 36%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_dry_run PASSED   [ 38%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_dry_run PASSED [ 40%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_empty PASSED   [ 41%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_and_relationships PASSED [ 43%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_idempotent PASSED [ 45%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_idempotent PASSED [ 47%]
+Application/Tests/test_neo4j_sync.py::test_run_sync_full_cycle PASSED    [ 49%]
+Application/Tests/test_planner_agent.py::test_planner_generate_syllabus PASSED [ 50%]
+Application/Tests/test_postgres_repo.py::test_tables_exist ERROR         [ 52%]
+Application/Tests/test_postgres_repo.py::test_create_course_returns_id ERROR [ 54%]
+Application/Tests/test_postgres_repo.py::test_create_course_without_description ERROR [ 56%]
+Application/Tests/test_postgres_repo.py::test_create_course_from_template ERROR [ 58%]
+Application/Tests/test_postgres_repo.py::test_get_course_review ERROR    [ 60%]
+Application/Tests/test_postgres_repo.py::test_get_course_review_not_found ERROR [ 61%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_empty ERROR   [ 63%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_ordered ERROR [ 65%]
+Application/Tests/test_postgres_repo.py::test_log_and_retrieve ERROR     [ 67%]
+Application/Tests/test_postgres_repo.py::test_update_course_status ERROR [ 69%]
+Application/Tests/test_postgres_repo.py::test_create_approval_approved ERROR [ 70%]
+Application/Tests/test_postgres_repo.py::test_create_approval_rejected ERROR [ 72%]
+Application/Tests/test_postgres_repo.py::test_search_courses ERROR       [ 74%]
+Application/Tests/test_postgres_repo.py::test_search_courses_no_match ERROR [ 76%]
+Application/Tests/test_postgres_repo.py::test_get_metrics_empty ERROR    [ 78%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow PASSED [ 80%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_vector_retrieval_accuracy SKIPPED [ 81%]
+Application/Tests/test_scraper.py::test_scraper_initialization PASSED    [ 83%]
+Application/Tests/test_scraper.py::test_cleaner_raw_text FAILED          [ 85%]
+Application/Tests/test_scraper.py::test_cleaner_syllabus_dict FAILED     [ 87%]
+Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel FAILED [ 89%]
+Application/Tests/test_syllabus_workflow.py::test_successful_workflow_execution ERROR [ 90%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics ERROR [ 92%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_validation_failure ERROR [ 94%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure ERROR [ 96%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_reviewer_failure ERROR [ 98%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_assembler_failure ERROR [100%]
+
+==================================== ERRORS ====================================
+__________ ERROR at setup of TestCoursesEndpoints.test_search_courses __________
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+_____ ERROR at setup of TestCoursesEndpoints.test_generate_course_template _____
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+____ ERROR at setup of TestCoursesEndpoints.test_generate_short_title_fails ____
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+_____ ERROR at setup of TestCoursesEndpoints.test_generate_no_title_fails ______
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+_ ERROR at setup of TestCoursesEndpoints.test_generate_invalid_duration_fails __
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+___ ERROR at setup of TestCoursesEndpoints.test_generate_invalid_level_fails ___
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+________ ERROR at setup of TestCoursesEndpoints.test_get_course_review _________
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+__________ ERROR at setup of TestCoursesEndpoints.test_course_status ___________
+Application/Tests/test_api.py:21: in setup_method
+    with test_repo.conn.cursor() as cur:
+         ^^^^^^^^^^^^^^
+E   AttributeError: 'PostgresRepository' object has no attribute 'conn'
+_____________________ ERROR at setup of test_tables_exist ______________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_______________ ERROR at setup of test_create_course_returns_id ________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+___________ ERROR at setup of test_create_course_without_description ___________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+______________ ERROR at setup of test_create_course_from_template ______________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+___________________ ERROR at setup of test_get_course_review ___________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+______________ ERROR at setup of test_get_course_review_not_found ______________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+__________________ ERROR at setup of test_get_chapters_empty ___________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_________________ ERROR at setup of test_get_chapters_ordered __________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+___________________ ERROR at setup of test_log_and_retrieve ____________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_________________ ERROR at setup of test_update_course_status __________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_______________ ERROR at setup of test_create_approval_approved ________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_______________ ERROR at setup of test_create_approval_rejected ________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+____________________ ERROR at setup of test_search_courses _____________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+________________ ERROR at setup of test_search_courses_no_match ________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+___________________ ERROR at setup of test_get_metrics_empty ___________________
+Application/Tests/test_postgres_repo.py:20: in repo
+    r = PostgresRepository(**DB_PARAMS)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:17: in __init__
+    self.pool = pool.ThreadedConnectionPool(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:161: in __init__
+    AbstractConnectionPool.__init__(
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:59: in __init__
+    self._connect()
+.venv/lib/python3.13/site-packages/psycopg2/pool.py:63: in _connect
+    conn = psycopg2.connect(*self._args, **self._kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/psycopg2/__init__.py:122: in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "postgres" does not exist
+_____________ ERROR at setup of test_successful_workflow_execution _____________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 65
+  @pytest.mark.asyncio
+  async def test_successful_workflow_execution(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
+      # Setup initial state
+      initial_state = SyllabusState(
+          title="Test Course",
+          topics=["Intro", "Advanced"],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=[],
+          validated=False
+      )
+      # Use only ainvoke for graphs containing asynchronous nodes (Author/Reviewer)
+      result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+      # Assertions
+      assert len(result["syllabus"]) == 2
+      assert len(result["chapters"]) == 2
+      assert result["validated"] is True
+
+      # Verify planner was called
+      mock_planner.generate_syllabus.assert_called_once_with(["Intro", "Advanced"])
+
+      # Verify author was called for each topic
+      assert mock_author.generate_content.call_count == 2
+
+      # Verify reviewer was called for each chapter
+      assert mock_reviewer.validate_factual_grounding.call_count == 2
+      assert mock_reviewer.validate_style.call_count == 2
+
+      # Verify assembler was called
+      mock_assembler.export_to_docx.assert_called_once()
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:65
+______________ ERROR at setup of test_workflow_with_empty_topics _______________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 96
+  @pytest.mark.asyncio
+  async def test_workflow_with_empty_topics(syllabus_workflow):
+      # Setup initial state with empty topics
+      initial_state = SyllabusState(
+          title="Empty Topics Course",
+          topics=[],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=None,
+          validated=False
+      )
+
+      # Execute workflow
+      result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+
+      # Assertions for empty topics
+      assert len(result["syllabus"]) == 0
+      assert len(result["chapters"]) == 0
+      assert result["validated"] is False
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:96
+___________ ERROR at setup of test_workflow_with_validation_failure ____________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 116
+  @pytest.mark.asyncio
+  async def test_workflow_with_validation_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
+      # Setup reviewer to fail validation
+      mock_reviewer.validate_factual_grounding.return_value = False
+
+      # Setup initial state
+      initial_state = SyllabusState(
+          title="Validation Failure Course",
+          topics=["Intro", "Advanced"],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=[],
+          validated=False
+      )
+
+      # Execute workflow
+      result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+
+      # Assertions for validation failure
+      assert len(result["syllabus"]) == 2
+      assert len(result["chapters"]) == 2
+      assert result["validated"] is False
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:116
+_____________ ERROR at setup of test_workflow_with_author_failure ______________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 139
+  @pytest.mark.asyncio
+  async def test_workflow_with_author_failure(syllabus_workflow, mock_planner, mock_author):
+      # Setup author to fail content generation
+      mock_author.generate_content.side_effect = [
+          Chapter(title="Intro", content="Detailed content for Intro.", chapter_order=1, status="generated"),
+          Exception("Failed to generate content")
+      ]
+
+      # Setup initial state
+      initial_state = SyllabusState(
+          title="Author Failure Course",
+          topics=["Intro", "Advanced"],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=[],
+          validated=False
+      )
+
+      # Execute workflow and expect exception
+      with pytest.raises(Exception) as excinfo:
+          await syllabus_workflow.ainvoke(initial_state.model_dump())
+
+      assert "Failed to generate content" in str(excinfo.value)
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:139
+____________ ERROR at setup of test_workflow_with_reviewer_failure _____________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 163
+  @pytest.mark.asyncio
+  async def test_workflow_with_reviewer_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer):
+      # Setup reviewer to fail validation
+      mock_reviewer.validate_factual_grounding.side_effect = [True, False]
+      mock_reviewer.validate_style.side_effect = [True, False]
+
+      # Setup initial state
+      initial_state = SyllabusState(
+          title="Reviewer Failure Course",
+          topics=["Intro", "Advanced"],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=[],
+          validated=False
+      )
+
+      # Execute workflow
+      result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+
+      # Assertions for validation failure
+      assert len(result["syllabus"]) == 2
+      assert len(result["chapters"]) == 2
+      assert result["validated"] is False
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:163
+____________ ERROR at setup of test_workflow_with_assembler_failure ____________
+file /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py, line 187
+  @pytest.mark.asyncio
+  async def test_workflow_with_assembler_failure(syllabus_workflow, mock_planner, mock_author, mock_reviewer, mock_assembler):
+      # Setup assembler to fail
+      mock_assembler.export_to_docx.side_effect = Exception("Failed to export document")
+
+      # Setup initial state
+      initial_state = SyllabusState(
+          title="Assembler Failure Course",
+          topics=["Intro", "Advanced"],
+          syllabus=[],
+          chapters={},
+          scraped_syllabi=[],
+          validated=False
+      )
+
+      # Execute workflow and expect exception
+      with pytest.raises(Exception) as excinfo:
+          await syllabus_workflow.ainvoke(initial_state.model_dump())
+
+      assert "Failed to export document" in str(excinfo.value)
+E       fixture 'syllabus_workflow' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_assembler, mock_author, mock_planner, mock_reviewer, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:187
+=================================== FAILURES ===================================
+_________________ TestSyllabusEndpoints.test_generate_syllabus _________________
+Application/Tests/test_api.py:111: in test_generate_syllabus
+    assert response.status_code in [200, 503]
+E   assert 500 in [200, 503]
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+⚠️ Warning: AuthorAgent initialized without Postgres logging (Repo Down)
+🔍 Initializing AstraDB...
+✅ AstraDB connected
+⚠️ Warning: PlannerAgent initialized without Neo4j KG (Neo4j Down)
+🚨 UNHANDLED EXCEPTION: 'NoneType' object has no attribute 'database'
+----------------------------- Captured stderr call -----------------------------
+W0428 13:28:57.380000 54357 .venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8635.95it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 157, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/anyio/streams/memory.py", line 132, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Main.py", line 109, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/syllabus.py", line 69, in generate_syllabus
+    agents = get_agents()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/agents.py", line 51, in get_real_agents
+    agents = initialize_real_agents()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/agents.py", line 36, in initialize_real_agents
+    "planner": PlannerAgent(neo4j_repo),
+               ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Agents/Planner_agent.py", line 11, in __init__
+    self.database = self.graph_repo.database
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'database'/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py:511: DeprecationWarning: Relying on Driver's destructor to close the session is deprecated. Please make sure to close the session. Use it as a context (`with` statement) or make sure to call `.close()` explicitly. Future versions of the driver will not close drivers automatically.
+  deprecation_warn(
+
+------------------------------ Captured log call -------------------------------
+WARNING  torchao:__init__.py:83 Skipping import of cpp extensions due to incompatible torch version. Please upgrade to torch >= 2.11.0 (found 2.10.0).
+WARNING  torchao.kernel.intmm:intmm.py:21 Warning: Detected no triton, on systems without Triton certain kernels will not work
+WARNING  huggingface_hub.utils._http:_http.py:916 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+____________________________ test_triple_db_manager ____________________________
+Application/Tests/test_db_health.py:16: in test_triple_db_manager
+    assert all(v == 'healthy' for v in health.values() if v != 'integrated')
+E   assert False
+E    +  where False = all(<generator object test_triple_db_manager.<locals>.<genexpr> at 0x12c465630>)
+----------------------------- Captured stdout call -----------------------------
+PostgresRepo connected: localhost:5433/ai_gen_db
+⚠️ Neo4j auth failed with env credentials ({code: Neo.ClientError.Security.Unauthorized} {message: The client is unauthorized due to authentication failure.}), retrying with local defaults...
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+__________________________ test_check_all_dbs_healthy __________________________
+Application/API/dependencies.py:211: in check_all_dbs
+    raise ValueError("Postgres not initialized")
+E   ValueError: Postgres not initialized
+
+During handling of the above exception, another exception occurred:
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:473: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+Application/API/dependencies.py:218: in check_all_dbs
+    raise Exception(f"Critical: Postgres unhealthy - {e}")
+E   Exception: Critical: Postgres unhealthy - Postgres not initialized
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_db_health.py:22: in test_check_all_dbs_healthy
+    results = check_all_dbs()
+              ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:331: in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:470: in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:371: in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:414: in exc_check
+    raise retry_exc from fut.exception()
+E   tenacity.RetryError: RetryError[<Future at 0x12c45eea0 state=finished raised Exception>]
+
+During handling of the above exception, another exception occurred:
+Application/Tests/test_db_health.py:26: in test_check_all_dbs_healthy
+    pytest.fail(f'Legacy DB health check failed: {e}')
+E   Failed: Legacy DB health check failed: RetryError[<Future at 0x12c45eea0 state=finished raised Exception>]
+_____________________________ test_neo4j_singleton _____________________________
+Application/Tests/test_db_health.py:40: in test_neo4j_singleton
+    assert _neo4j_repo is not None
+E   assert None is not None
+----------------------------- Captured stdout call -----------------------------
+🔍 Testing local Neo4j (Docker): bolt://localhost:7687
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+❌ Local Neo4j failed: RetryError[<Future at 0x12c996250 state=finished raised DatabaseError>]
+💡 Fix: cd Application/Docker && docker compose up -d neo4j
+__________________________________ test_flow ___________________________________
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:101: in map_httpcore_exceptions
+    yield
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:394: in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py:256: in handle_async_request
+    raise exc from None
+.venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py:236: in handle_async_request
+    response = await connection.handle_async_request(
+.venv/lib/python3.13/site-packages/httpcore/_async/connection.py:101: in handle_async_request
+    raise exc
+.venv/lib/python3.13/site-packages/httpcore/_async/connection.py:78: in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/connection.py:124: in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_backends/auto.py:31: in connect_tcp
+    return await self._backend.connect_tcp(
+.venv/lib/python3.13/site-packages/httpcore/_backends/anyio.py:113: in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
+.venv/lib/python3.13/site-packages/httpcore/_exceptions.py:14: in map_exceptions
+    raise to_exc(exc) from exc
+E   httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_frontend_api_interactivity.py:15: in test_flow
+    search_res = await client.get(f"{BASE_URL}/courses/search-courses?q=Unity")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1768: in get
+    return await self.request(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:393: in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:118: in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+E   httpx.ConnectError: All connection attempts failed
+----------------------------- Captured stdout call -----------------------------
+🚀 Starting Frontend-Backend Interactivity Test...
+🔍 Testing Search API...
+____________________________ test_cleaner_raw_text _____________________________
+Application/Tests/test_scraper.py:53: in test_cleaner_raw_text
+    assert stats['removed_short'] >= 1
+E   assert 0 >= 1
+__________________________ test_cleaner_syllabus_dict __________________________
+Application/Tests/test_scraper.py:68: in test_cleaner_syllabus_dict
+    assert 'Topic 1' in topics
+E   AssertionError: assert 'Topic 1' in ['Very long outlier topic.....................................................']
+____________________ test_scrape_relevant_syllabi_parallel _____________________
+Application/Tests/test_scraper.py:101: in test_scrape_relevant_syllabi_parallel
+    assert raw_stats['removed_duplicate'] > 0
+E   assert 0 > 0
+----------------------------- Captured stdout call -----------------------------
+🎯 Cache hit for 'Test Course'
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/starlette/formparsers.py:12
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+Application/API/Endpoints/courses.py:51
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py:51: PydanticDeprecatedSince212: Using `@model_validator` with mode='after' on a classmethod is deprecated. Instead, use an instance method. See the documentation at https://docs.pydantic.dev/2.13/concepts/validators/#model-after-validator. Deprecated in Pydantic V2.12 to be removed in V3.0.
+    @model_validator(mode='after')
+
+Application/Tests/test_syllabus_workflow.py:209
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:209: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+Application/Tests/test_db_health.py::test_neo4j_singleton
+Application/Tests/test_db_health.py::test_neo4j_singleton
+Application/Tests/test_db_health.py::test_neo4j_singleton
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py:511: DeprecationWarning: Relying on Driver's destructor to close the session is deprecated. Please make sure to close the session. Use it as a context (`with` statement) or make sure to call `.close()` explicitly. Future versions of the driver will not close drivers automatically.
+    deprecation_warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus
+FAILED Application/Tests/test_db_health.py::test_triple_db_manager - assert F...
+FAILED Application/Tests/test_db_health.py::test_check_all_dbs_healthy - Fail...
+FAILED Application/Tests/test_db_health.py::test_neo4j_singleton - assert Non...
+FAILED Application/Tests/test_frontend_api_interactivity.py::test_flow - http...
+FAILED Application/Tests/test_scraper.py::test_cleaner_raw_text - assert 0 >= 1
+FAILED Application/Tests/test_scraper.py::test_cleaner_syllabus_dict - Assert...
+FAILED Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_search_courses
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_short_title_fails
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_no_title_fails
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_duration_fails
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_level_fails
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_get_course_review
+ERROR Application/Tests/test_api.py::TestCoursesEndpoints::test_course_status
+ERROR Application/Tests/test_postgres_repo.py::test_tables_exist - psycopg2.O...
+ERROR Application/Tests/test_postgres_repo.py::test_create_course_returns_id
+ERROR Application/Tests/test_postgres_repo.py::test_create_course_without_description
+ERROR Application/Tests/test_postgres_repo.py::test_create_course_from_template
+ERROR Application/Tests/test_postgres_repo.py::test_get_course_review - psyco...
+ERROR Application/Tests/test_postgres_repo.py::test_get_course_review_not_found
+ERROR Application/Tests/test_postgres_repo.py::test_get_chapters_empty - psyc...
+ERROR Application/Tests/test_postgres_repo.py::test_get_chapters_ordered - ps...
+ERROR Application/Tests/test_postgres_repo.py::test_log_and_retrieve - psycop...
+ERROR Application/Tests/test_postgres_repo.py::test_update_course_status - ps...
+ERROR Application/Tests/test_postgres_repo.py::test_create_approval_approved
+ERROR Application/Tests/test_postgres_repo.py::test_create_approval_rejected
+ERROR Application/Tests/test_postgres_repo.py::test_search_courses - psycopg2...
+ERROR Application/Tests/test_postgres_repo.py::test_search_courses_no_match
+ERROR Application/Tests/test_postgres_repo.py::test_get_metrics_empty - psyco...
+ERROR Application/Tests/test_syllabus_workflow.py::test_successful_workflow_execution
+ERROR Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics
+ERROR Application/Tests/test_syllabus_workflow.py::test_workflow_with_validation_failure
+ERROR Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure
+ERROR Application/Tests/test_syllabus_workflow.py::test_workflow_with_reviewer_failure
+ERROR Application/Tests/test_syllabus_workflow.py::test_workflow_with_assembler_failure
+= 8 failed, 17 passed, 1 skipped, 1 deselected, 11 warnings, 29 errors in 53.84s =
+<sys>:0: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

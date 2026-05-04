@@ -1,0 +1,281 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build
+configfile: pytest.ini
+plugins: typeguard-4.5.1, asyncio-1.3.0, langsmith-0.3.45, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 56 items / 1 deselected / 55 selected
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_search_courses PASSED [  1%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template PASSED [  3%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_short_title_fails PASSED [  5%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_no_title_fails PASSED [  7%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_duration_fails PASSED [  9%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_level_fails PASSED [ 10%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_get_course_review PASSED [ 12%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_course_status PASSED [ 14%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus PASSED [ 16%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus FAILED [ 18%]
+Application/Tests/test_api.py::test_root_redirect PASSED                 [ 20%]
+Application/Tests/test_author_agent.py::test_author_generate_content PASSED [ 21%]
+Application/Tests/test_db_health.py::test_triple_db_manager PASSED       [ 23%]
+Application/Tests/test_db_health.py::test_check_all_dbs_healthy FAILED   [ 25%]
+Application/Tests/test_db_health.py::test_postgres_singleton PASSED      [ 27%]
+Application/Tests/test_db_health.py::test_neo4j_singleton FAILED         [ 29%]
+Application/Tests/test_frontend_api_interactivity.py::test_flow PASSED   [ 30%]
+Application/Tests/test_neo4j_sync.py::test_build_config_local PASSED     [ 32%]
+Application/Tests/test_neo4j_sync.py::test_build_config_cloud PASSED     [ 34%]
+Application/Tests/test_neo4j_sync.py::test_build_config_missing_raises PASSED [ 36%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_dry_run PASSED   [ 38%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_dry_run PASSED [ 40%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_empty PASSED   [ 41%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_and_relationships PASSED [ 43%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_idempotent PASSED [ 45%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_idempotent PASSED [ 47%]
+Application/Tests/test_neo4j_sync.py::test_run_sync_full_cycle PASSED    [ 49%]
+Application/Tests/test_planner_agent.py::test_planner_generate_syllabus PASSED [ 50%]
+Application/Tests/test_postgres_repo.py::test_tables_exist PASSED        [ 52%]
+Application/Tests/test_postgres_repo.py::test_create_course_returns_id PASSED [ 54%]
+Application/Tests/test_postgres_repo.py::test_create_course_without_description PASSED [ 56%]
+Application/Tests/test_postgres_repo.py::test_create_course_from_template FAILED [ 58%]
+Application/Tests/test_postgres_repo.py::test_get_course_review FAILED   [ 60%]
+Application/Tests/test_postgres_repo.py::test_get_course_review_not_found PASSED [ 61%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_empty PASSED  [ 63%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_ordered PASSED [ 65%]
+Application/Tests/test_postgres_repo.py::test_log_and_retrieve PASSED    [ 67%]
+Application/Tests/test_postgres_repo.py::test_update_course_status PASSED [ 69%]
+Application/Tests/test_postgres_repo.py::test_create_approval_approved PASSED [ 70%]
+Application/Tests/test_postgres_repo.py::test_create_approval_rejected PASSED [ 72%]
+Application/Tests/test_postgres_repo.py::test_search_courses FAILED      [ 74%]
+Application/Tests/test_postgres_repo.py::test_search_courses_no_match PASSED [ 76%]
+Application/Tests/test_postgres_repo.py::test_get_metrics_empty PASSED   [ 78%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow PASSED [ 80%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_vector_retrieval_accuracy SKIPPED [ 81%]
+Application/Tests/test_scraper.py::test_scraper_initialization PASSED    [ 83%]
+Application/Tests/test_scraper.py::test_cleaner_raw_text PASSED          [ 85%]
+Application/Tests/test_scraper.py::test_cleaner_syllabus_dict PASSED     [ 87%]
+Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel FAILED [ 89%]
+Application/Tests/test_syllabus_workflow.py::test_successful_workflow_execution PASSED [ 90%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics FAILED [ 92%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_validation_failure PASSED [ 94%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure FAILED [ 96%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_reviewer_failure PASSED [ 98%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_assembler_failure PASSED [100%]
+
+=================================== FAILURES ===================================
+_________________ TestSyllabusEndpoints.test_generate_syllabus _________________
+Application/Tests/test_api.py:114: in test_generate_syllabus
+    assert response.status_code in [200, 503]
+E   assert 500 in [200, 503]
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+Note: Title 'Test ML Course' provided - consider scraping first via /scrape endpoint
+🚨 SYLLABUS GENERATION FULL TRACEBACK:
+Error type: ValidationError, message: 1 validation error for SyllabusState
+chapters
+  Input should be a valid list [type=list_type, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/list_type
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/syllabus.py", line 91, in generate_syllabus
+    result = await workflow.ainvoke(invoke_data)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/main.py", line 3182, in ainvoke
+    async for chunk in self.astream(
+    ...<29 lines>...
+            chunks.append(chunk)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/main.py", line 2997, in astream
+    while loop.tick():
+          ~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_loop.py", line 453, in tick
+    self.tasks = prepare_next_tasks(
+                 ~~~~~~~~~~~~~~~~~~^
+        self.checkpoint,
+        ^^^^^^^^^^^^^^^^
+    ...<14 lines>...
+        cache_policy=self.cache_policy,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_algo.py", line 465, in prepare_next_tasks
+    if task := prepare_single_task(
+               ~~~~~~~~~~~~~~~~~~~^
+        (PULL, name),
+        ^^^^^^^^^^^^^
+    ...<17 lines>...
+        retry_policy=retry_policy,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ):
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_algo.py", line 805, in prepare_single_task
+    val = _proc_input(
+        proc,
+    ...<4 lines>...
+        scratchpad=scratchpad,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_algo.py", line 1055, in _proc_input
+    val = proc.mapper(val)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/graph/state.py", line 1237, in _coerce_state
+    return schema(**input)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/pydantic/main.py", line 263, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for SyllabusState
+chapters
+  Input should be a valid list [type=list_type, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/list_type
+Before task with name 'scrape' and path '('__pregel_pull', 'scrape')'
+__________________________ test_check_all_dbs_healthy __________________________
+Application/API/dependencies.py:234: in check_all_dbs
+    raise ValueError("Neo4j not initialized")
+E   ValueError: Neo4j not initialized
+
+During handling of the above exception, another exception occurred:
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:473: in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+Application/API/dependencies.py:242: in check_all_dbs
+    raise Exception(f"Critical: Neo4j unhealthy - {e}")
+E   Exception: Critical: Neo4j unhealthy - Neo4j not initialized
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_db_health.py:24: in test_check_all_dbs_healthy
+    results = check_all_dbs()
+              ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:331: in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:470: in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:371: in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/tenacity/__init__.py:414: in exc_check
+    raise retry_exc from fut.exception()
+E   tenacity.RetryError: RetryError[<Future at 0x12cf70830 state=finished raised Exception>]
+
+During handling of the above exception, another exception occurred:
+Application/Tests/test_db_health.py:28: in test_check_all_dbs_healthy
+    pytest.fail(f'Legacy DB health check failed: {e}')
+E   Failed: Legacy DB health check failed: RetryError[<Future at 0x12cf70830 state=finished raised Exception>]
+----------------------------- Captured stdout call -----------------------------
+✅ Postgres health OK
+✅ Postgres health OK
+✅ Postgres health OK
+_____________________________ test_neo4j_singleton _____________________________
+Application/Tests/test_db_health.py:42: in test_neo4j_singleton
+    assert _neo4j_repo is not None
+E   assert None is not None
+----------------------------- Captured stdout call -----------------------------
+🔍 Testing local Neo4j (Docker): bolt://localhost:7687
+✅ Neo4j connectivity: None
+{code: Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists} {message: An equivalent constraint already exists, 'Constraint( id=4, name='constraint_unique_Topic_name', type='UNIQUENESS', schema=(:Topic {name}), ownedIndex=3 )'.}
+Setting up indexes and constraints...
+
+Found Application.Infrastructure.graphDb.models.Course
+ + Creating node unique constraint for course_id on label Course for class Application.Infrastructure.graphDb.models.Course
+⚠️ Neomodel label install warning (likely already exists): {code: Neo.DatabaseError.Schema.ConstraintCreationFailed} {message: Unable to create Constraint( name='constraint_unique_Course_course_id', type='UNIQUENESS', schema=(:Course {course_id}) ):
+Both Node(2) and Node(4) have the label `Course` and property `course_id` = 1. Note that only the first found violation is shown.}
+✅ Local Neo4j connected
+_______________________ test_create_course_from_template _______________________
+Application/Tests/test_postgres_repo.py:67: in test_create_course_from_template
+    course_id = repo.create_course_from_template(template)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:235: in create_course_from_template
+    cur.execute(
+E   psycopg2.errors.InvalidColumnReference: there is no unique or exclusion constraint matching the ON CONFLICT specification
+____________________________ test_get_course_review ____________________________
+Application/Tests/test_postgres_repo.py:75: in test_get_course_review
+    course_id = repo.create_course_from_template(template)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:225: in create_course_from_template
+    cur.execute(
+E   psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "courses_title_key"
+E   DETAIL:  Key (title)=(Review Test) already exists.
+_____________________________ test_search_courses ______________________________
+Application/Tests/test_postgres_repo.py:155: in test_search_courses
+    repo.create_course_from_template({"title": "Machine Learning 101", "level": "Beginner"})
+Application/Infrastructure/relationalDB/postgres_repo.py:225: in create_course_from_template
+    cur.execute(
+E   psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "courses_title_key"
+E   DETAIL:  Key (title)=(Machine Learning 101) already exists.
+____________________ test_scrape_relevant_syllabi_parallel _____________________
+Application/Tests/test_scraper.py:103: in test_scrape_relevant_syllabi_parallel
+    assert (raw_stats['removed_duplicate'] + raw_stats['removed_junk'] + raw_stats['removed_short']) > 0
+E   assert ((0 + 0) + 0) > 0
+----------------------------- Captured stdout call -----------------------------
+🎯 Cache hit for 'Test Course'
+_______________________ test_workflow_with_empty_topics ________________________
+Application/Tests/test_syllabus_workflow.py:112: in test_workflow_with_empty_topics
+    assert len(result["syllabus"]) == 0
+E   AssertionError: assert 2 == 0
+E    +  where 2 = len(['Intro', 'Advanced'])
+----------------------------- Captured stdout call -----------------------------
+🔍 Scraping real-world syllabi for 'Empty Topics Course'...
+🎯 Cache hit for 'Empty Topics Course'
+📊 Pre-cleaned topics: 10, stats: {'raw': {'total_lines': 638, 'removed_null': 0, 'removed_short': 110, 'removed_long': 10, 'removed_junk': 2, 'removed_outlier': 0, 'removed_duplicate': 0, 'lines_kept': 516, 'avg_line_len': 40.9}, 'structured': {'fields_cleaned': [{'field': 'main_topics', 'total': 333, 'kept': 311, 'removed_short': 22, 'deduped': 0, 'removed_outlier': 19}, {'field': 'learning_objectives', 'total': 0, 'kept': 0, 'removed_short': 0, 'deduped': 0}, {'field': 'prerequisites', 'total': 1, 'kept': 1, 'removed_short': 0, 'deduped': 0}, {'field': 'assessment_methods', 'total': 65, 'kept': 63, 'removed_short': 2, 'deduped': 0, 'removed_outlier': 2}], 'total_items': 399, 'items_kept': 375}}
+🧹 ETL WORKFLOW Cleaning: {'workflow': {'fields_cleaned': [{'field': 'main_topics', 'total': 10, 'kept': 10, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 1}], 'total_items': 10, 'items_kept': 10}}
+📡 Knowledge base update dispatched to background (thread-safe)
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+✍️ Generating real chapter content...
+📚 Generated 2 chapters in 0.0s
+🔍 Performing quality assurance and semantic review...
+🏁 Review complete: PASS (0/2 issues found)
+📄 Finalizing course assembly and exporting assets...
+🎉 Course generation successful! Artifact: <Mock name='mock.export_to_docx()' id='5049341600'>
+______________________ test_workflow_with_author_failure _______________________
+Application/Tests/test_syllabus_workflow.py:158: in test_workflow_with_author_failure
+    with pytest.raises(Exception) as excinfo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'Exception'>
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+✍️ Generating real chapter content...
+📚 Generated 2 chapters in 0.0s
+🔍 Performing quality assurance and semantic review...
+🏁 Review complete: PASS (0/2 issues found)
+📄 Finalizing course assembly and exporting assets...
+🎉 Course generation successful! Artifact: <Mock name='mock.export_to_docx()' id='5049346640'>
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/starlette/formparsers.py:12
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+Application/API/Endpoints/courses.py:51
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py:51: PydanticDeprecatedSince212: Using `@model_validator` with mode='after' on a classmethod is deprecated. Instead, use an instance method. See the documentation at https://docs.pydantic.dev/2.13/concepts/validators/#model-after-validator. Deprecated in Pydantic V2.12 to be removed in V3.0.
+    @model_validator(mode='after')
+
+Application/Tests/test_syllabus_workflow.py:209
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:209: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2264: UnsupportedFieldAttributeWarning: The 'validation_alias' attribute with value AliasChoices(choices=['title', 'topic']) was provided to the `Field()` function, which has no effect in the context it was used. 'validation_alias' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+    warnings.warn(
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+Application/Tests/test_db_health.py::test_check_all_dbs_healthy
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py:511: DeprecationWarning: Relying on Driver's destructor to close the session is deprecated. Please make sure to close the session. Use it as a context (`with` statement) or make sure to call `.close()` explicitly. Future versions of the driver will not close drivers automatically.
+    deprecation_warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus
+FAILED Application/Tests/test_db_health.py::test_check_all_dbs_healthy - Fail...
+FAILED Application/Tests/test_db_health.py::test_neo4j_singleton - assert Non...
+FAILED Application/Tests/test_postgres_repo.py::test_create_course_from_template
+FAILED Application/Tests/test_postgres_repo.py::test_get_course_review - psyc...
+FAILED Application/Tests/test_postgres_repo.py::test_search_courses - psycopg...
+FAILED Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure
+====== 9 failed, 45 passed, 1 skipped, 1 deselected, 7 warnings in 16.38s ======
+<sys>:0: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

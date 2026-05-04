@@ -1,10 +1,10 @@
-import psycopg2
+from .postgres_orm_repo import PostgresORMRepository
 from psycopg2 import pool
 from typing import List, Dict, Optional, Any
 from contextlib import contextmanager
 from Domain.course import Chapter
 
-class PostgresRepository:
+class PostgresRepository(PostgresORMRepository):
     def __init__(self, dbname: str, user: str, password: str, host: str = "localhost", port: int = 5432):
         self.conn_params = {
             'dbname': dbname,
@@ -34,10 +34,10 @@ class PostgresRepository:
             self.pool.putconn(conn)
 
     def init_schema(self) -> None:
-        """Initialize the full PostgreSQL schema with all tables and indexes."""
+        """Initialize the full PostgreSQL schema with all tables and indexes matching models.py."""
         schema_sql = """
--- Core Tables
-CREATE TABLE users (
+-- Complete schema from models.py
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     course_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
@@ -58,59 +58,57 @@ CREATE TABLE courses (
     status VARCHAR(50) DEFAULT 'draft'
 );
 
-CREATE TABLE chapters (
+CREATE TABLE IF NOT EXISTS chapters (
     chapter_id SERIAL PRIMARY KEY,
-    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT,
     chapter_order INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(course_id, title),
-    status VARCHAR(50) DEFAULT 'draft'
+    status VARCHAR(50) DEFAULT 'draft',
+    UNIQUE(course_id, title)
 );
 
-CREATE TABLE syllabus (
+CREATE TABLE IF NOT EXISTS syllabus (
     syllabus_id SERIAL PRIMARY KEY,
-    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE NOT NULL,
     content JSONB NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'draft'
 );
 
--- Workflow Tables
-CREATE TABLE runs (
+CREATE TABLE IF NOT EXISTS runs (
     run_id SERIAL PRIMARY KEY,
-    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(course_id) ON DELETE CASCADE NOT NULL,
     workflow_name VARCHAR(255) NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     status VARCHAR(50) DEFAULT 'running'
 );
 
-CREATE TABLE run_agents (
+CREATE TABLE IF NOT EXISTS run_agents (
     run_agent_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     agent_name VARCHAR(255) NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     status VARCHAR(50) DEFAULT 'running'
 );
 
-CREATE TABLE logs (
+CREATE TABLE IF NOT EXISTS logs (
     log_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     agent_name VARCHAR(255),
     message TEXT NOT NULL,
     level VARCHAR(50) DEFAULT 'info',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Approval Tables
-CREATE TABLE approvals (
+CREATE TABLE IF NOT EXISTS approvals (
     approval_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     chapter_id INT REFERENCES chapters(chapter_id) ON DELETE CASCADE,
     approver_id INT REFERENCES users(user_id),
     status VARCHAR(50) DEFAULT 'pending',
@@ -118,46 +116,44 @@ CREATE TABLE approvals (
     approved_at TIMESTAMP
 );
 
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     review_id SERIAL PRIMARY KEY,
-    chapter_id INT REFERENCES chapters(chapter_id) ON DELETE CASCADE,
-    reviewer_id INT REFERENCES users(user_id),
+    chapter_id INT REFERENCES chapters(chapter_id) ON DELETE CASCADE NOT NULL,
+    reviewer_id INT REFERENCES users(user_id) NOT NULL,
     feedback TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Metrics Tables
-CREATE TABLE metrics (
+CREATE TABLE IF NOT EXISTS metrics (
     metric_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     agent_name VARCHAR(255),
     metric_name VARCHAR(255) NOT NULL,
     value FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE costs (
+CREATE TABLE IF NOT EXISTS costs (
     cost_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     agent_name VARCHAR(255),
     cost_type VARCHAR(255) NOT NULL,
     value FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Artifact Tables
-CREATE TABLE artifacts (
+CREATE TABLE IF NOT EXISTS artifacts (
     artifact_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
     artifact_type VARCHAR(50) NOT NULL,
     file_path VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE exports (
+CREATE TABLE IF NOT EXISTS exports (
     export_id SERIAL PRIMARY KEY,
-    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE,
-    artifact_id INT REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    run_id INT REFERENCES runs(run_id) ON DELETE CASCADE NOT NULL,
+    artifact_id INT REFERENCES artifacts(artifact_id) ON DELETE CASCADE NOT NULL,
     exported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'pending'
 );
@@ -169,24 +165,25 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TIMESTAMP NOT NULL
 );
 
--- Indexes
-CREATE INDEX idx_courses_created_by ON courses(created_by);
-CREATE INDEX idx_courses_status ON courses(status);
-CREATE INDEX idx_chapters_course_id ON chapters(course_id);
-CREATE INDEX idx_chapters_order ON chapters(chapter_order);
-CREATE INDEX idx_runs_course_id ON runs(course_id);
-CREATE INDEX idx_runs_status ON runs(status);
-CREATE INDEX idx_logs_run_id ON logs(run_id);
-CREATE INDEX idx_logs_level ON logs(level);
-CREATE INDEX idx_approvals_run_id ON approvals(run_id);
-CREATE INDEX idx_approvals_chapter_id ON approvals(chapter_id);
-CREATE INDEX idx_approvals_status ON approvals(status);
-CREATE INDEX idx_metrics_run_id ON metrics(run_id);
-CREATE INDEX idx_metrics_agent_name ON metrics(agent_name);
-CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
+-- Performance indexes matching models
+CREATE INDEX IF NOT EXISTS idx_courses_created_by ON courses(created_by);
+CREATE INDEX IF NOT EXISTS idx_courses_status ON courses(status);
+CREATE INDEX IF NOT EXISTS idx_chapters_course_id ON chapters(course_id);
+CREATE INDEX IF NOT EXISTS idx_chapters_order ON chapters(chapter_order);
+CREATE INDEX IF NOT EXISTS idx_runs_course_id ON runs(course_id);
+CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
+CREATE INDEX IF NOT EXISTS idx_logs_run_id ON logs(run_id);
+CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+CREATE INDEX IF NOT EXISTS idx_approvals_run_id ON approvals(run_id);
+CREATE INDEX IF NOT EXISTS idx_approvals_chapter_id ON approvals(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
+CREATE INDEX IF NOT EXISTS idx_metrics_run_id ON metrics(run_id);
+CREATE INDEX IF NOT EXISTS idx_metrics_agent_name ON metrics(agent_name);
+CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
         """
         with self.get_cursor() as cur:
             cur.execute(schema_sql)
+            print("✅ Full Postgres schema initialized")
 
     def create_course(self, title: str, audience: str, description: Optional[str] = None, created_by: Optional[int] = None) -> int:
         with self.get_cursor() as cur:
@@ -225,6 +222,11 @@ CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
             cur.execute(
                 """
                 INSERT INTO courses (title, description, audience, status) VALUES (%s, %s, %s, %s)
+                ON CONFLICT (title) DO UPDATE SET
+                    description = EXCLUDED.description,
+                    audience = EXCLUDED.audience,
+                    status = EXCLUDED.status,
+                    updated_at = CURRENT_TIMESTAMP
                 RETURNING course_id
                 """,
                 (template['title'], str(template.get('learning_objectives', [])), template.get('level', 'general'), status)
@@ -378,6 +380,16 @@ CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
             )
             columns = ["metric_id", "agent_name", "metric_name", "value", "created_at"]
             return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def log_metric(self, run_id: int, metric_name: str, value: float, agent_name: Optional[str] = None) -> None:
+        """Log a single metric value to the metrics table."""
+        if not run_id or run_id <= 0:
+            return
+        with self.get_cursor() as cur:
+            cur.execute(
+                "INSERT INTO metrics (run_id, agent_name, metric_name, value) VALUES (%s, %s, %s, %s)",
+                (run_id, agent_name, metric_name, value)
+            )
 
     def save_full_course_chapters(self, course_id: int, chapters: List) -> None:
         """Save full generated chapters from workflow to chapters table"""

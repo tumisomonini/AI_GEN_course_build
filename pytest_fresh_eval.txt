@@ -1,0 +1,1660 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build
+configfile: pytest.ini
+plugins: typeguard-4.5.1, asyncio-1.3.0, langsmith-0.3.45, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 56 items / 1 deselected / 55 selected
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_search_courses FAILED [  1%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template FAILED [  3%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_short_title_fails PASSED [  5%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_no_title_fails PASSED [  7%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_duration_fails PASSED [  9%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_invalid_level_fails PASSED [ 10%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_get_course_review FAILED [ 12%]
+Application/Tests/test_api.py::TestCoursesEndpoints::test_course_status FAILED [ 14%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus PASSED [ 16%]
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus FAILED [ 18%]
+Application/Tests/test_api.py::test_root_redirect PASSED                 [ 20%]
+Application/Tests/test_author_agent.py::test_author_generate_content PASSED [ 21%]
+Application/Tests/test_db_health.py::test_triple_db_manager PASSED       [ 23%]
+Application/Tests/test_db_health.py::test_check_all_dbs_healthy SKIPPED  [ 25%]
+Application/Tests/test_db_health.py::test_postgres_singleton FAILED      [ 27%]
+Application/Tests/test_db_health.py::test_neo4j_singleton SKIPPED (N...) [ 29%]
+Application/Tests/test_frontend_api_interactivity.py::test_flow FAILED   [ 30%]
+Application/Tests/test_neo4j_sync.py::test_build_config_local PASSED     [ 32%]
+Application/Tests/test_neo4j_sync.py::test_build_config_cloud PASSED     [ 34%]
+Application/Tests/test_neo4j_sync.py::test_build_config_missing_raises PASSED [ 36%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_dry_run PASSED   [ 38%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_dry_run PASSED [ 40%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_empty PASSED   [ 41%]
+Application/Tests/test_neo4j_sync.py::test_extract_topics_and_relationships PASSED [ 43%]
+Application/Tests/test_neo4j_sync.py::test_merge_topics_idempotent PASSED [ 45%]
+Application/Tests/test_neo4j_sync.py::test_merge_relationships_idempotent PASSED [ 47%]
+Application/Tests/test_neo4j_sync.py::test_run_sync_full_cycle PASSED    [ 49%]
+Application/Tests/test_planner_agent.py::test_planner_generate_syllabus PASSED [ 50%]
+Application/Tests/test_postgres_repo.py::test_tables_exist PASSED        [ 52%]
+Application/Tests/test_postgres_repo.py::test_create_course_returns_id PASSED [ 54%]
+Application/Tests/test_postgres_repo.py::test_create_course_without_description PASSED [ 56%]
+Application/Tests/test_postgres_repo.py::test_create_course_from_template FAILED [ 58%]
+Application/Tests/test_postgres_repo.py::test_get_course_review PASSED   [ 60%]
+Application/Tests/test_postgres_repo.py::test_get_course_review_not_found PASSED [ 61%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_empty PASSED  [ 63%]
+Application/Tests/test_postgres_repo.py::test_get_chapters_ordered PASSED [ 65%]
+Application/Tests/test_postgres_repo.py::test_log_and_retrieve PASSED    [ 67%]
+Application/Tests/test_postgres_repo.py::test_update_course_status PASSED [ 69%]
+Application/Tests/test_postgres_repo.py::test_create_approval_approved PASSED [ 70%]
+Application/Tests/test_postgres_repo.py::test_create_approval_rejected PASSED [ 72%]
+Application/Tests/test_postgres_repo.py::test_search_courses PASSED      [ 74%]
+Application/Tests/test_postgres_repo.py::test_search_courses_no_match PASSED [ 76%]
+Application/Tests/test_postgres_repo.py::test_get_metrics_empty PASSED   [ 78%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_full_rag_flow PASSED [ 80%]
+Application/Tests/test_rag_integration.py::TestRAGIntegration::test_vector_retrieval_accuracy SKIPPED [ 81%]
+Application/Tests/test_scraper.py::test_scraper_initialization PASSED    [ 83%]
+Application/Tests/test_scraper.py::test_cleaner_raw_text PASSED          [ 85%]
+Application/Tests/test_scraper.py::test_cleaner_syllabus_dict PASSED     [ 87%]
+Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel FAILED [ 89%]
+Application/Tests/test_syllabus_workflow.py::test_successful_workflow_execution FAILED [ 90%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics FAILED [ 92%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_validation_failure FAILED [ 94%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure FAILED [ 96%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_reviewer_failure FAILED [ 98%]
+Application/Tests/test_syllabus_workflow.py::test_workflow_with_assembler_failure FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ TestCoursesEndpoints.test_search_courses ___________________
+Application/Tests/test_api.py:32: in test_search_courses
+    assert response.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+PostgresRepo connected: localhost:5433/ai_gen_db
+✅ Postgres repository and schema ready
+🚨 UNHANDLED EXCEPTION: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title ILIKE %(title_1)s ORDER BY courses.course_id]
+[parameters: {'title_1': '%python%'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Main.py", line 109, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py", line 65, in search_courses
+    results = repo.search_courses(q) if q else []
+              ~~~~~~~~~~~~~~~~~~~^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 211, in search_courses
+    courses = session.query(Course).filter(Course.title.ilike(f'%{query}%')).order_by(Course.course_id).all()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2711, in all
+    return self._iter().all()  # type: ignore
+           ~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title ILIKE %(title_1)s ORDER BY courses.course_id]
+[parameters: {'title_1': '%python%'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+______________ TestCoursesEndpoints.test_generate_course_template ______________
+Application/Tests/test_api.py:46: in test_generate_course_template
+    assert response.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+🚨 UNHANDLED EXCEPTION: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title = %(title_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'title_1': 'Test Python Course', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Main.py", line 109, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py", line 92, in generate_course_template
+    course_id = repo.create_course_from_template(template_stub)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 72, in create_course_from_template
+    existing_course = session.query(Course).filter_by(title=template['title']).first()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title = %(title_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'title_1': 'Test Python Course', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+_________________ TestCoursesEndpoints.test_get_course_review __________________
+Application/Tests/test_api.py:84: in test_get_course_review
+    course_id = create_response.json()["course_id"]
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'course_id'
+----------------------------- Captured stdout call -----------------------------
+🚨 UNHANDLED EXCEPTION: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title = %(title_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'title_1': 'Test Review Course', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Main.py", line 109, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py", line 92, in generate_course_template
+    course_id = repo.create_course_from_template(template_stub)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 72, in create_course_from_template
+    existing_course = session.query(Course).filter_by(title=template['title']).first()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.title = %(title_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'title_1': 'Test Review Course', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+___________________ TestCoursesEndpoints.test_course_status ____________________
+Application/Tests/test_api.py:94: in test_course_status
+    assert response.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+🚨 UNHANDLED EXCEPTION: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.course_id = %(course_id_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'course_id_1': 999999, 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Main.py", line 109, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py", line 303, in course_status_only
+    row = repo.get_course_status(course_id)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 139, in get_course_status
+    course = session.query(Course).filter(Course.course_id == course_id).first()
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2766, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/query.py", line 2864, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column courses.created_by_id does not exist
+LINE 1: ...escription, courses.audience AS courses_audience, courses.cr...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "courses.created_by".
+
+[SQL: SELECT courses.course_id AS courses_course_id, courses.title AS courses_title, courses.description AS courses_description, courses.audience AS courses_audience, courses.created_by_id AS courses_created_by_id, courses.created_at AS courses_created_at, courses.updated_at AS courses_updated_at, courses.status AS courses_status 
+FROM courses 
+WHERE courses.course_id = %(course_id_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'course_id_1': 999999, 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+_________________ TestSyllabusEndpoints.test_generate_syllabus _________________
+Application/Tests/test_api.py:114: in test_generate_syllabus
+    assert response.status_code in [200, 503]
+E   assert 500 in [200, 503]
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+----------------------------- Captured stdout call -----------------------------
+🔍 Initializing AstraDB...
+✅ AstraDB connected
+⚠️ Warning: PlannerAgent initialized without Neo4j KG (Neo4j Down)
+✅ All 4 agents initialized for real course generation (with OpenRouter/Mistral fallback)
+Note: Title 'Test ML Course' provided - consider scraping first via /scrape endpoint
+📋 Organizing syllabus topics into an optimal learning path...
+KG Planner failed: KnowledgeGraph not initialized. Using legacy Neo4j/NetworkX.
+✅ Syllabus organized: 2 chapters determined.
+🚨 SYLLABUS GENERATION FULL TRACEBACK:
+Error type: IntegrityError, message: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+[SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+[parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/syllabus.py", line 108, in generate_syllabus
+    result = await workflow.ainvoke(invoke_data)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/main.py", line 3182, in ainvoke
+    async for chunk in self.astream(
+    ...<29 lines>...
+            chunks.append(chunk)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/main.py", line 3000, in astream
+    async for _ in runner.atick(
+    ...<13 lines>...
+            yield o
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+    ...<15 lines>...
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        step.ainvoke(input, config, **kwargs), context=context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py", line 667, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py", line 658, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Workflows/syllabus_workflow.py", line 347, in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Workflows/syllabus_workflow.py", line 146, in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 199, in log_message
+    with self.get_session() as session:
+         ~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 148, in __exit__
+    next(self.gen)
+    ~~~~^^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Infrastructure/relationalDB/postgres_orm_repo.py", line 33, in get_session
+    session.commit()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+[SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+[parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+During task with name 'planner' and id '8a7741d0-26f5-036e-868f-fd1913ccf486'
+___________________________ test_postgres_singleton ____________________________
+Application/Tests/test_db_health.py:47: in test_postgres_singleton
+    assert hasattr(repo, 'pool')  # Verify pool exists
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert False
+E    +  where False = hasattr(<Application.Ports.postgres_repo.PostgresRepo object at 0x130079bd0>, 'pool')
+----------------------------- Captured stdout call -----------------------------
+PostgresRepo connected: localhost:5433/ai_gen_db
+__________________________________ test_flow ___________________________________
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:101: in map_httpcore_exceptions
+    yield
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:394: in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py:256: in handle_async_request
+    raise exc from None
+.venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py:236: in handle_async_request
+    response = await connection.handle_async_request(
+.venv/lib/python3.13/site-packages/httpcore/_async/connection.py:103: in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/http11.py:136: in handle_async_request
+    raise exc
+.venv/lib/python3.13/site-packages/httpcore/_async/http11.py:106: in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/http11.py:177: in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_async/http11.py:217: in _receive_event
+    data = await self._network_stream.read(
+.venv/lib/python3.13/site-packages/httpcore/_backends/anyio.py:32: in read
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
+.venv/lib/python3.13/site-packages/httpcore/_exceptions.py:14: in map_exceptions
+    raise to_exc(exc) from exc
+E   httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_frontend_api_interactivity.py:15: in test_flow
+    search_res = await client.get(f"{BASE_URL}/courses/search-courses?q=Unity")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1768: in get
+    return await self.request(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:393: in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:118: in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+E   httpx.ReadTimeout
+----------------------------- Captured stdout call -----------------------------
+🚀 Starting Frontend-Backend Interactivity Test...
+🔍 Testing Search API...
+_______________________ test_create_course_from_template _______________________
+Application/Tests/test_postgres_repo.py:69: in test_create_course_from_template
+    course_id = repo.create_course_from_template(template)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_repo.py:237: in create_course_from_template
+    cur.execute(
+E   psycopg2.errors.InvalidColumnReference: there is no unique or exclusion constraint matching the ON CONFLICT specification
+____________________ test_scrape_relevant_syllabi_parallel _____________________
+.venv/lib/python3.13/site-packages/_pytest/monkeypatch.py:92: in annotated_getattr
+    obj = getattr(obj, name)
+          ^^^^^^^^^^^^^^^^^^
+E   AttributeError: type object 'Scraper' has no attribute 'redis_client'
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_scraper.py:88: in test_scrape_relevant_syllabi_parallel
+    monkeypatch.setattr('Application.Infrastructure.Scraper.scraper_core.Scraper.redis_client', None) # Bypass cache
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/_pytest/monkeypatch.py:106: in derive_importpath
+    annotated_getattr(target, attr, ann=module)
+.venv/lib/python3.13/site-packages/_pytest/monkeypatch.py:94: in annotated_getattr
+    raise AttributeError(
+E   AttributeError: 'type' object at Application.Infrastructure.Scraper.scraper_core.Scraper has no attribute 'redis_client'
+______________________ test_successful_workflow_execution ______________________
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_syllabus_workflow.py:77: in test_successful_workflow_execution
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3182: in ainvoke
+    async for chunk in self.astream(
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3000: in astream
+    async for _ in runner.atick(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py:304: in atick
+    await arun_with_retry(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py:137: in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:705: in ainvoke
+    input = await asyncio.create_task(
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:473: in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:667: in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:658: in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:347: in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:146: in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:199: in log_message
+    with self.get_session() as session:
+         ^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:148: in __exit__
+    next(self.gen)
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:33: in get_session
+    session.commit()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+E   
+E   [SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+E   [parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+E   During task with name 'planner' and id 'd9c76f5a-e9f6-3a2c-0ea4-3c3065cfd80b'
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+_______________________ test_workflow_with_empty_topics ________________________
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_syllabus_workflow.py:109: in test_workflow_with_empty_topics
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3182: in ainvoke
+    async for chunk in self.astream(
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3000: in astream
+    async for _ in runner.atick(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py:304: in atick
+    await arun_with_retry(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py:137: in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:705: in ainvoke
+    input = await asyncio.create_task(
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:473: in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:667: in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:658: in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:347: in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:146: in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:199: in log_message
+    with self.get_session() as session:
+         ^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:148: in __exit__
+    next(self.gen)
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:33: in get_session
+    session.commit()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+E   
+E   [SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+E   [parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+E   During task with name 'planner' and id '85c114e2-edac-b901-4704-42ace793ddfb'
+----------------------------- Captured stdout call -----------------------------
+🔍 Scraping real-world syllabi for 'Empty Topics Course'...
+🧹 ETL SCRAPE Cleaning: {'total_lines': 187, 'removed_null': 0, 'removed_short': 6, 'removed_long': 0, 'removed_junk': 0, 'removed_outlier': 0, 'removed_duplicate': 0, 'lines_kept': 181, 'avg_line_len': 52.6}
+🧹 ETL PARSE Cleaning: {'structured': {'fields_cleaned': [{'field': 'main_topics', 'total': 150, 'kept': 149, 'removed_short': 1, 'deduped': 0, 'removed_outlier': 0}, {'field': 'learning_objectives', 'total': 5, 'kept': 5, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 0}, {'field': 'prerequisites', 'total': 2, 'kept': 2, 'removed_short': 0, 'deduped': 0}, {'field': 'assessment_methods', 'total': 13, 'kept': 13, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 0}], 'total_items': 170, 'items_kept': 169}}
+🧹 ETL SCRAPE Cleaning: {'total_lines': 635, 'removed_null': 0, 'removed_short': 110, 'removed_long': 10, 'removed_junk': 2, 'removed_outlier': 0, 'removed_duplicate': 0, 'lines_kept': 513, 'avg_line_len': 40.7}
+🧹 ETL PARSE Cleaning: {'structured': {'fields_cleaned': [{'field': 'main_topics', 'total': 336, 'kept': 314, 'removed_short': 22, 'deduped': 0, 'removed_outlier': 19}, {'field': 'learning_objectives', 'total': 0, 'kept': 0, 'removed_short': 0, 'deduped': 0}, {'field': 'prerequisites', 'total': 1, 'kept': 1, 'removed_short': 0, 'deduped': 0}, {'field': 'assessment_methods', 'total': 58, 'kept': 56, 'removed_short': 2, 'deduped': 0, 'removed_outlier': 2}], 'total_items': 395, 'items_kept': 371}}
+🧹 ETL SCRAPE Cleaning: {'total_lines': 60, 'removed_null': 0, 'removed_short': 2, 'removed_long': 8, 'removed_junk': 0, 'removed_outlier': 0, 'removed_duplicate': 0, 'lines_kept': 50, 'avg_line_len': 162.6}
+🧹 ETL PARSE Cleaning: {'structured': {'fields_cleaned': [{'field': 'main_topics', 'total': 15, 'kept': 15, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 1}, {'field': 'learning_objectives', 'total': 0, 'kept': 0, 'removed_short': 0, 'deduped': 0}, {'field': 'prerequisites', 'total': 1, 'kept': 1, 'removed_short': 0, 'deduped': 0}, {'field': 'assessment_methods', 'total': 3, 'kept': 3, 'removed_short': 0, 'deduped': 0}], 'total_items': 19, 'items_kept': 19}}
+📊 Pre-cleaned topics: 10, stats: {'raw': {'total_lines': 187, 'removed_null': 0, 'removed_short': 6, 'removed_long': 0, 'removed_junk': 0, 'removed_outlier': 0, 'removed_duplicate': 0, 'lines_kept': 181, 'avg_line_len': 52.6}, 'structured': {'fields_cleaned': [{'field': 'main_topics', 'total': 150, 'kept': 149, 'removed_short': 1, 'deduped': 0, 'removed_outlier': 0}, {'field': 'learning_objectives', 'total': 5, 'kept': 5, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 0}, {'field': 'prerequisites', 'total': 2, 'kept': 2, 'removed_short': 0, 'deduped': 0}, {'field': 'assessment_methods', 'total': 13, 'kept': 13, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 0}], 'total_items': 170, 'items_kept': 169}}
+🧹 ETL WORKFLOW Cleaning: {'workflow': {'fields_cleaned': [{'field': 'main_topics', 'total': 10, 'kept': 10, 'removed_short': 0, 'deduped': 0, 'removed_outlier': 0}], 'total_items': 10, 'items_kept': 10}}
+⚠️ Astra upsert failed: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+[SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+[parameters: {'run_id': 0, 'agent_name': 'AstraDB', 'message': '📡 Knowledge base update dispatched to background (thread-safe)', 'level': 'info'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+____________________ test_workflow_with_validation_failure _____________________
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_syllabus_workflow.py:131: in test_workflow_with_validation_failure
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3182: in ainvoke
+    async for chunk in self.astream(
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3000: in astream
+    async for _ in runner.atick(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py:304: in atick
+    await arun_with_retry(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py:137: in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:705: in ainvoke
+    input = await asyncio.create_task(
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:473: in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:667: in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:658: in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:347: in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:146: in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:199: in log_message
+    with self.get_session() as session:
+         ^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:148: in __exit__
+    next(self.gen)
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:33: in get_session
+    session.commit()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+E   
+E   [SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+E   [parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+E   During task with name 'planner' and id '104b741e-9a26-7d70-bd35-0d7f175f9e1c'
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+______________________ test_workflow_with_author_failure _______________________
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_syllabus_workflow.py:157: in test_workflow_with_author_failure
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3182: in ainvoke
+    async for chunk in self.astream(
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3000: in astream
+    async for _ in runner.atick(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py:304: in atick
+    await arun_with_retry(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py:137: in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:705: in ainvoke
+    input = await asyncio.create_task(
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:473: in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:667: in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:658: in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:347: in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:146: in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:199: in log_message
+    with self.get_session() as session:
+         ^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:148: in __exit__
+    next(self.gen)
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:33: in get_session
+    session.commit()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+E   
+E   [SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+E   [parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+E   During task with name 'planner' and id '664a0867-5db5-54c9-e9dc-b0830c2c88a1'
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+_____________________ test_workflow_with_reviewer_failure ______________________
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   psycopg2.errors.ForeignKeyViolation: insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+
+The above exception was the direct cause of the following exception:
+Application/Tests/test_syllabus_workflow.py:179: in test_workflow_with_reviewer_failure
+    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3182: in ainvoke
+    async for chunk in self.astream(
+.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3000: in astream
+    async for _ in runner.atick(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py:304: in atick
+    await arun_with_retry(
+.venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py:137: in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:705: in ainvoke
+    input = await asyncio.create_task(
+.venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py:473: in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:667: in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/langchain_core/runnables/config.py:658: in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:347: in <lambda>
+    graph.add_node("planner", lambda s: planner_node(s, planner))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Workflows/syllabus_workflow.py:146: in planner_node
+    if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:199: in log_message
+    with self.get_session() as session:
+         ^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:148: in __exit__
+    next(self.gen)
+Application/Infrastructure/relationalDB/postgres_orm_repo.py:33: in get_session
+    session.commit()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:2030: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1311: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:1286: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4331: in flush
+    self._flush(objects)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4466: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/session.py:4427: in _flush
+    flush_context.execute()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1419: in execute
+    return meth(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+E   sqlalchemy.exc.IntegrityError: (psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"
+E   DETAIL:  Key (run_id)=(0) is not present in table "runs".
+E   
+E   [SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]
+E   [parameters: {'run_id': 0, 'agent_name': 'Planner', 'message': '✅ Syllabus organized: 2 chapters determined.', 'level': 'info'}]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+E   During task with name 'planner' and id '9c942ae8-9a40-80a6-3bea-7cb4a1bc050b'
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+_____________________ test_workflow_with_assembler_failure _____________________
+Application/Tests/test_syllabus_workflow.py:205: in test_workflow_with_assembler_failure
+    assert "Failed to export document" in str(excinfo.value)
+E   assert 'Failed to export document' in '(psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"\nDETAIL:  Key (run_id)=(0) is not present in table "runs".\n\n[SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]\n[parameters: {\'run_id\': 0, \'agent_name\': \'Planner\', \'message\': \'✅ Syllabus organized: 2 chapters determined.\', \'level\': \'info\'}]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)'
+E    +  where '(psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"\nDETAIL:  Key (run_id)=(0) is not present in table "runs".\n\n[SQL: INSERT INTO logs (run_id, agent_name, message, level, created_at) VALUES (%(run_id)s, %(agent_name)s, %(message)s, %(level)s, CURRENT_TIMESTAMP) RETURNING logs.log_id, logs.created_at]\n[parameters: {\'run_id\': 0, \'agent_name\': \'Planner\', \'message\': \'✅ Syllabus organized: 2 chapters determined.\', \'level\': \'info\'}]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)' = str(IntegrityError('(psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"\nDETAIL:  Key (run_id)=(0) is not present in table "runs".\n'))
+E    +    where IntegrityError('(psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"\nDETAIL:  Key (run_id)=(0) is not present in table "runs".\n') = <ExceptionInfo IntegrityError('(psycopg2.errors.ForeignKeyViolation) insert or update on table "logs" violates foreign key constraint "logs_run_id_fkey"\nDETAIL:  Key (run_id)=(0) is not present in table "runs".\n') tblen=38>.value
+----------------------------- Captured stdout call -----------------------------
+📋 Organizing syllabus topics into an optimal learning path...
+✅ Syllabus organized: 2 chapters determined.
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/starlette/formparsers.py:12
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+Application/API/Endpoints/courses.py:51
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/API/Endpoints/courses.py:51: PydanticDeprecatedSince212: Using `@model_validator` with mode='after' on a classmethod is deprecated. Instead, use an instance method. See the documentation at https://docs.pydantic.dev/2.13/concepts/validators/#model-after-validator. Deprecated in Pydantic V2.12 to be removed in V3.0.
+    @model_validator(mode='after')
+
+Application/Tests/test_syllabus_workflow.py:208
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Tests/test_syllabus_workflow.py:208: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:2264: UnsupportedFieldAttributeWarning: The 'validation_alias' attribute with value AliasChoices(choices=['title', 'topic']) was provided to the `Field()` function, which has no effect in the context it was used. 'validation_alias' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+    warnings.warn(
+
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus
+Application/Tests/test_db_health.py::test_neo4j_singleton
+  /Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py:511: DeprecationWarning: Relying on Driver's destructor to close the session is deprecated. Please make sure to close the session. Use it as a context (`with` statement) or make sure to call `.close()` explicitly. Future versions of the driver will not close drivers automatically.
+    deprecation_warn(
+
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+Application/Tests/test_api.py::TestSyllabusEndpoints::test_scrape_syllabus
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED Application/Tests/test_api.py::TestCoursesEndpoints::test_search_courses
+FAILED Application/Tests/test_api.py::TestCoursesEndpoints::test_generate_course_template
+FAILED Application/Tests/test_api.py::TestCoursesEndpoints::test_get_course_review
+FAILED Application/Tests/test_api.py::TestCoursesEndpoints::test_course_status
+FAILED Application/Tests/test_api.py::TestSyllabusEndpoints::test_generate_syllabus
+FAILED Application/Tests/test_db_health.py::test_postgres_singleton - Asserti...
+FAILED Application/Tests/test_frontend_api_interactivity.py::test_flow - http...
+FAILED Application/Tests/test_postgres_repo.py::test_create_course_from_template
+FAILED Application/Tests/test_scraper.py::test_scrape_relevant_syllabi_parallel
+FAILED Application/Tests/test_syllabus_workflow.py::test_successful_workflow_execution
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_empty_topics
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_validation_failure
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_author_failure
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_reviewer_failure
+FAILED Application/Tests/test_syllabus_workflow.py::test_workflow_with_assembler_failure
+= 15 failed, 37 passed, 3 skipped, 1 deselected, 8 warnings in 78.94s (0:01:18) =

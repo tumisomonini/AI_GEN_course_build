@@ -8,22 +8,15 @@ from Application.Ports.postgres_repo import PostgresRepo
 
 def get_training_data():
     """Pull approved chapter content from Postgres for fine-tuning."""
-    repo = PostgresRepo()
-    with repo.get_cursor() as cur:
-        # Select chapters that were generated and potentially reviewed/approved
-        cur.execute("""
-            SELECT c.title, c.content 
-            FROM chapters c 
-            WHERE c.status = 'generated' AND length(c.content) > 500
-        """)
-        rows = cur.fetchall()
-    repo.close()
+    repo = PostgresRepo() # Instantiate the repo
+    rows = repo.get_training_chapters(min_length=500) # Use the dedicated method
+    repo.close() # Ensure the connection is closed
     
     # Format into Instruction-Input-Output style for LLM
     formatted_data = []
     for title, content in rows:
         formatted_data.append({
-            "instruction": f"Generate a detailed educational chapter about {title}.",
+            "instruction": f"Generate a comprehensive educational chapter on '{title}'.",
             "input": "",
             "output": content
         })

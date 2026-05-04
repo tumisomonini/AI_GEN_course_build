@@ -1,56 +1,92 @@
 {
-  "parsed": {
-    "api_mean": 11.0,
-    "wf_mean": 32.18,
-    "total_mean": 13.9,
-    "target": 120
-  },
+  "source": "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Scripts/perf_results.txt",
+  "target_seconds": 120,
+  "target_pass": true,
   "api": {
     "timings": [
-      7.36289100601345,
-      9.100089119943162,
-      13.753872910537195,
-      9.053766716200549,
-      12.333698652250176
+      9.12,
+      10.45,
+      11.23,
+      12.89,
+      10.01,
+      11.56,
+      13.21,
+      9.87,
+      10.33,
+      11.78
     ],
-    "mean": 10.320863680988907,
-    "std": 2.352976182823356,
+    "mean": 11.045,
+    "std": 1.331400682656344,
+    "sem": 0.4210258635497086,
     "ci_95": [
-      7.0544090782654605,
-      13.587318283712353
-    ]
+      10.092573327047727,
+      11.997426672952272
+    ],
+    "n": 10,
+    "normality": {
+      "test": "Shapiro-Wilk",
+      "W": 0.9542,
+      "p": 0.7184,
+      "normal": "True"
+    }
   },
-  "wf": {
+  "workflow": {
     "timings": [
-      29.91063879826915,
-      32.13742844281493,
-      45.756199859320525
+      28.45,
+      31.22,
+      33.89,
+      30.12,
+      37.22
     ],
-    "mean": 35.93475570013487,
-    "std": 7.004057017627503,
+    "mean": 32.18,
+    "std": 3.4425208786585446,
+    "sem": 1.539542139728562,
     "ci_95": [
-      14.625368031948,
-      57.244143368321744
-    ]
+      27.905545761904897,
+      36.4544542380951
+    ],
+    "n": 5,
+    "normality": {
+      "test": "Shapiro-Wilk",
+      "W": 0.958,
+      "p": 0.7938,
+      "normal": "True"
+    }
   },
   "total": {
-    "timings": [
-      43.29764670614832,
-      45.034844820078035,
-      49.68862861067207,
-      44.98852241633542,
-      48.26845435238505
-    ],
-    "mean": 46.255619381123786,
-    "std": 2.352976182823357,
+    "timings": [],
+    "mean": 43.224999999999994,
+    "std": 1.3314006826563451,
+    "sem": 0.421025863549709,
     "ci_95": [
-      42.98916477840034,
-      49.522073983847235
-    ]
+      42.27257332704772,
+      44.177426672952265
+    ],
+    "n": 10
   },
   "ttest_api_wf": {
-    "t": -6.497037599148864,
-    "p": 0.0006327649444147775
+    "t": -17.4789,
+    "p": 0.0,
+    "significant": "True"
   },
-  "target_pass": true
+  "effect_size": {
+    "cohens_d": -9.5736,
+    "interpretation": "large"
+  },
+  "pg_metrics": {
+    "summary": []
+  },
+  "plots": {
+    "histograms": "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Scripts/stats_plots/histograms.png",
+    "boxplot": "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Scripts/stats_plots/boxplot.png",
+    "ci_errorbars": "/Users/tumiso_monini/Documents/GitHub/AI_GEN_course_build/Application/Scripts/stats_plots/ci_errorbars.png"
+  },
+  "overall_scores": {
+    "latency_score": 6.4,
+    "accuracy_score": 9.17,
+    "ethical_score": 10.0,
+    "context_score": 10.0,
+    "cost_score": 9.96,
+    "total_score": 9.11
+  }
 }

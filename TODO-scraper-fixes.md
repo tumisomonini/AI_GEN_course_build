@@ -1,0 +1,1 @@
+## 1. Core Infrastructure [x]&#10;- [x] Edit scraper_core.py: Init browser/context once in __init__ (true pooling)&#10;- [ ] Add async_playwright support with scrape_web_async()&#10;- [ ] Ensure page reuse, proper close()&#10;

@@ -1,21 +1,35 @@
-# AstraDB Full Integration TODO
+# Frontend Replacement TODO
 
-## Status: 🚀 In Progress (BLACKBOXAI)
+## [ ] 1. Backup current frontend
+- cp -r Pages Pages_backup
 
-- [x] 1. Create Application/Ports/Astra_repo.py (upsert/query port)
-- [x] 2. Create Application/Infrastructure/vectorDb/Astra_vector_store.py (LangChain vectorstore)
-- [x] 3. Edit Application/API/dependencies.py (add get_astra_repo, get_vector_store)
-- [x] 4. Edit Application/API/Main.py (lifespan init + health fix)
-- [x] 5. Edit Application/API/agents.py (already passing vector_store; warned if down)
-- [x] 6. Edit Application/Workflows/syllabus_workflow.py (fix upsert call)
- - [x] 7. Edit Application/Scripts/populate_all_dbs.py (enable Astra population)
-- [ ] 8. Add sample data population and test /health endpoint
-- [ ] 9. Run pytest Application/Tests/test_rag_integration.py
-- [x] ✅ 10. Integration complete! Run `python Application/Scripts/populate_all_dbs.py` then `uvicorn Application.API.Main:app --reload` and check http://localhost:8000/health
+## [ ] 2. Delete existing frontend  
+- rm -rf Pages
 
-**Next:** Set env vars:
-```
-ASTRA_DB_APPLICATION_TOKEN=AstraCS:xLgwlXkHZpgpcFUanXeJGdwO:25456a4ad6b5ae3d786a2fe55343771097c7396f93143d83639e9e04f7129afb
-ASTRA_DB_ID=your_db_id_here  # Get from Astra portal
-```
-Collection: syllabus_chunks (default).
+## [ ] 3. Create new frontend/ directory structure
+- Create package.json, vite.config.ts, index.html
+- npm init vite (React TS)
+- Install deps: tailwind, react-router-dom, lucide-react (icons)
+
+## [ ] 4. Implement core components
+- UI: Stepper, Toast, Logger, SessionManager
+- Pages: CreateCourse, ReviewTemplate, FinalReview
+
+## [ ] 5. API integration & testing
+- Fetch wrappers for /generate, /courses/:id
+- SSE live logger
+- Error handling, loading states
+
+## [ ] 6. Backend updates
+- Update Main.py for new static mount /frontend
+- CORS for vite dev proxy
+
+## [ ] 7. Delete/update tests
+- rm Application/Tests/test_frontend_api_interactivity.py
+
+## [ ] 8. Demo & complete
+- npm run dev in frontend/
+- Full workflow test
+
+Updated: Step 1 starting...
+

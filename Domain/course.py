@@ -23,10 +23,13 @@ class Course(BaseModel):
 class Chapter(BaseModel):
     title: str
     content: str = ""
+    chapter_order: int = 0
+    status: Literal["pending", "generated", "approved", "rejected", "error"] = "pending"
+    review_comments: Optional[str] = None
     
     @classmethod
-    def from_scraped(cls, title: str, content: str) -> 'Chapter':
-        return cls(title=title, content=content[:1000])  # Truncate long content
+    def from_scraped(cls, title: str, content: str, order: int = 0) -> 'Chapter':
+        return cls(title=title, content=content[:1000], chapter_order=order)
 
 # Pydantic models for API
 class CourseCreate(BaseModel):

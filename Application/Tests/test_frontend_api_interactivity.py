@@ -1,9 +1,11 @@
 import httpx
 import asyncio
 import json
+import pytest
 
 BASE_URL = "http://localhost:8000"
 
+@pytest.mark.asyncio
 async def test_flow():
     print("🚀 Starting Frontend-Backend Interactivity Test...")
     

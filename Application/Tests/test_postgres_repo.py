@@ -1,6 +1,7 @@
 import pytest
 import sys
 import os
+import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -11,7 +12,7 @@ DB_PARAMS = {
     "user": "postgres",
     "password": "password123",
     "host": "localhost",
-    "port": 5432,
+    "port": 5433,
 }
 
 
@@ -58,8 +59,9 @@ def test_create_course_without_description(repo):
 # ── create_course_from_template ───────────────────────────────────────────────
 
 def test_create_course_from_template(repo):
+    unique = uuid.uuid4().hex[:8]
     template = {
-        "title": "Python Basics",
+        "title": f"Python Basics {unique}",
         "description": "Learn Python",
         "level": "Beginner",
         "chapters": [{"title": "Intro", "units": ["Unit 1"]}],
@@ -71,12 +73,13 @@ def test_create_course_from_template(repo):
 # ── get_course_review ─────────────────────────────────────────────────────────
 
 def test_get_course_review(repo):
-    template = {"title": "Review Test", "level": "Intermediate"}
+    unique = uuid.uuid4().hex[:8]
+    template = {"title": f"Review Test {unique}", "level": "Intermediate"}
     course_id = repo.create_course_from_template(template)
 
     result = repo.get_course_review(course_id)
     assert result["course"]["course_id"] == course_id
-    assert result["course"]["title"] == "Review Test"
+    assert result["course"]["title"] == f"Review Test {unique}"
     assert "template" in result
     assert "metadata" in result
 
@@ -152,7 +155,8 @@ def test_create_approval_rejected(repo):
 # ── search_courses ────────────────────────────────────────────────────────────
 
 def test_search_courses(repo):
-    repo.create_course_from_template({"title": "Machine Learning 101", "level": "Beginner"})
+    unique = uuid.uuid4().hex[:8]
+    repo.create_course_from_template({"title": f"Machine Learning 101 {unique}", "level": "Beginner"})
     results = repo.search_courses("Machine Learning")
     assert any("Machine Learning" in r["title"] for r in results)
 

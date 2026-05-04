@@ -8,11 +8,21 @@ import os
 import asyncio
 import traceback
 from pathlib import Path
+import sys
+
+# Fix utils import by adding root to path
+root_dir = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(root_dir))
+
+from utils.env_loader import load_root_env
+
+# Load env centrally
+load_root_env()
 
 from Application.API.Endpoints.syllabus import router as syllabus_router
 from Application.API.Endpoints.courses import router as courses_router
 from Application.API.Endpoints.session import router as session_router
-from Application.API.dependencies import get_postgres_repo, get_neo4j_repo, get_astra_repo, sanitize_neo4j_uri
+from Application.API.dependencies import get_postgres_repo, get_neo4j_repo, get_astra_repo, get_triple_db_manager, sanitize_neo4j_uri
 from Application.API.agents import get_real_agents
 from Application.Ports.postgres_repo import PostgresRepo
 from Application.Ports.neo4j_repo import Neo4jRepository as Neo4jRepoImpl
@@ -25,14 +35,8 @@ async def lifespan(app: FastAPI):
     import Application.API.dependencies as deps
     from Domain.knowledge_graphy import KnowledgeGraph
     
-    try:
-        deps._postgres_repo = PostgresRepo()
-        print("✅ Postgres connected and ready")
-    except Exception as e:
-        deps._postgres_repo = None
-        print(f"⚠️ Postgres skipped/failed: {e}")
-
-    # Use centralized init for consistency
+    # Use centralized init for consistency and schema enforcement
+    deps.init_postgres_singleton()
     deps.init_neo4j_singleton()
     try:
         deps.init_astra_singleton()
@@ -62,11 +66,23 @@ async def lifespan(app: FastAPI):
     
     # Comprehensive final check
     try:
-        from Application.API.dependencies import check_all_dbs
-        check_all_dbs()
-        print("✅ All critical DBs healthy - system ready for operation!")
+        manager = get_triple_db_manager()
+        health = manager.get_health()
+        critical_dbs = {k: v for k, v in health.items() if k in ('postgres', 'neo4j')}
+        if all(v == 'healthy' for v in critical_dbs.values()):
+            astra_status = health.get('astra', 'unknown')
+            if astra_status == 'healthy':
+                print("✅ TripleDBManager: All 3 DBs healthy & integrated!")
+            else:
+                print(f"⚠️ TripleDBManager: Astra status: {astra_status} (Vector RAG disabled)")
+            
+            # Ensure metadata is synced between Relational and Graph layers
+            manager.sync_metadata()
+        else:
+            raise ValueError(f"Critical DB health failed: {critical_dbs}")
     except Exception as e:
-        print(f"⚠️ DEGRADED MODE (non-critical services may work): {e}")
+        print(f"❌ Triple integration failed: {e}")
+        raise
     
     yield
     
@@ -121,8 +137,8 @@ app.include_router(session_router, prefix="/session", tags=["Session"])
 
 @app.get("/")
 async def root():
-    """Redirect to test interface"""
-    return RedirectResponse(url="/Pages/dashboard.html")
+    """Redirect to workflow interface for agent-based course generation"""
+    return RedirectResponse(url="/Pages/workflow.html")
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def get_robots():
@@ -141,91 +157,50 @@ async def websocket_health_check(websocket: WebSocket):
         print("🔌 WebSocket health check disconnected")
 
 @app.get("/health")
-async def health(
-    pg: PostgresRepo = Depends(get_postgres_repo),
-
-    neo4j: Neo4jRepoImpl = Depends(get_neo4j_repo)
-):
-    """Full system health: DBs + agents."""
-    # If the repo was None (failed init), try one more time via dependency logic
-    import Application.API.dependencies as deps
-    if pg is None and deps._postgres_repo is None:
-        pg = next(get_postgres_repo())
-
+async def health():
+    """Full system health: TripleDB + agents."""
+    from Application.API.dependencies import get_postgres_repo, get_astra_repo, get_neo4j_repo, get_triple_db_manager
+    from Application.API.agents import get_real_agents
+    
+    # Safe repo fetches (handle None)
+    pg = next(get_postgres_repo() or iter([]), None)
+    astra_repo = next(get_astra_repo() or iter([]), None)
+    neo4j_repo = next(get_neo4j_repo() or iter([]), None)
+    manager = get_triple_db_manager()
+    
+    health = manager.get_health()
+    
+    # Agent status
     try:
-        # Postgres health w/ retry
-        if pg:
-            for attempt in range(3):
-                try:
-                    with pg.get_cursor() as cur:
-                        cur.execute("SELECT 1")
-                    pg_status = {'status': 'ready', 'message': 'Postgres connected'}
-                    break
-                except Exception as e:
-                    if attempt == 2:
-                        pg_status = {'status': 'error', 'message': str(e)}
-                    else:
-                        time.sleep(1)
-            else:
-                pg_status = {'status': 'error', 'message': 'Retries exhausted'}
-        else:
-            pg_status = {'status': 'down', 'message': 'Not initialized'}
-
-# Astra health w/ retry
-        astra_status = {'status': 'down', 'message': 'Not initialized'}
-        try:
-            astra = next(get_astra_repo())
-            if astra:
-                for attempt in range(3):
-                    try:
-                        # Lighter check: init success, no embedding/search
-                        assert astra.vector_store is not None
-                        astra_status = {'status': 'ready', 'provider': 'AstraDB'}
-                        break
-                    except Exception as e:
-                        if attempt == 2:
-                            astra_status = {'status': 'error', 'message': str(e)}
-                        else:
-                            time.sleep(1)
-                else:
-                    astra_status = {'status': 'error', 'message': 'Retries exhausted'} 
-        except Exception as e:
-            astra_status = {'status': 'error', 'message': str(e)}
-        
-        # Neo4j health w/ retry
-        if neo4j:
-            for attempt in range(3):
-                try:
-                    database = os.getenv('NEO4J_DATABASE', 'neo4j')
-                    with neo4j.driver.session(database=database) as session:
-                        list(session.run('RETURN 1'))
-                        result2 = list(session.run('MATCH (t:Topic) RETURN t LIMIT 1'))
-                    neo4j_status = {'status': 'ready', 'topics_count': len(result2)}
-                    break
-                except Exception as e:
-                    if attempt == 2:
-                        neo4j_status = {'status': 'error', 'message': str(e)}
-                    else:
-                        time.sleep(1)
-            else:
-                neo4j_status = {'status': 'error', 'message': 'Retries exhausted'}
-        else:
-            neo4j_status = {'status': 'down', 'message': 'Not initialized'}
-        
-        # Agents
-        try:
-            agents = get_real_agents()
-            agent_status = 'ready'
-        except Exception as e:
-            agent_status = f'degraded: {str(e)}'
-        
-        return {
-            'status': 'healthy' if all(s.get('status') != 'error' for s in [pg_status, neo4j_status]) else 'degraded',
-'dbs': {'postgres': pg_status, 'neo4j': neo4j_status, 'astra': astra_status},
-            'agents': agent_status,
-            'pipeline': 'ready'
-        }
+        get_real_agents()  # Smoke test
+        agent_status = 'ready'
     except Exception as e:
-        return {'status': 'degraded', 'error': str(e)}
+        agent_status = f'degraded: {str(e)}'
+    
+    # Individual DB details with light retries if manager degraded
+    pg_status = {'status': 'ready' if pg else 'down'}
+    astra_status = {'status': 'ready' if astra_repo else 'down'}
+    neo4j_status = {'status': 'ready' if neo4j_repo else 'down'}
+    
+    if neo4j_repo:
+        try:
+            database = os.getenv('NEO4J_DATABASE', 'neo4j')
+            with neo4j_repo.driver.session(database=database) as session:
+                count = len(list(session.run('MATCH (t:Topic) RETURN t LIMIT 1')))
+                neo4j_status['topics_count'] = count
+        except Exception:
+            neo4j_status['status'] = 'error'
+    
+    overall = 'healthy' if all(s['status'] == 'ready' for s in [pg_status, neo4j_status]) else 'degraded'
+    
+    return {
+        'status': overall,
+        'triple_manager': health,
+        'postgres': pg_status,
+        'neo4j': neo4j_status,
+        'astra': astra_status,
+        'agents': agent_status,
+        'pipeline': 'integrated'
+    }
 
-print("🎓 Real course builder live at http://localhost:8000/Pages/test_interface.html")
+print("🎓 Real course builder live at http://localhost:8000/Pages/workflow.html")

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from Application.Infrastructure.relationalDB.postgres_repo import PostgresRepository
+from Application.Infrastructure.relationalDB.postgres_orm_repo import PostgresORMRepository
 
 load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
@@ -13,25 +13,21 @@ class PostgresRepo:
         # Inside Docker network, use the service name. Outside, use localhost.
         is_docker = os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER") == "true"
         
-        # If POSTGRES_HOST is not set, use service name 'postgres' in docker, else 'localhost'
-        host = os.getenv('POSTGRES_HOST', 'postgres' if is_docker else 'localhost')
-        port = int(os.getenv('POSTGRES_PORT', '5432' if is_docker else '5433'))
-        
-        # Internal port is 5432, but host-mapped port in your docker-compose is 5433
-        default_port = '5432' if is_docker else '5433'
-        port = int(os.getenv('POSTGRES_PORT', default_port))
+        host = os.getenv('POSTGRES_HOST', 'postgres' if is_docker else 'localhost').strip()
+        # Default to 5432 (standard) in Docker, or 5433 (mapped) on host
+        port = int(os.getenv('POSTGRES_PORT', '5432' if is_docker else '5433').strip())
         
         dbname = os.getenv('POSTGRES_DBNAME', 'ai_gen_db')
         user = os.getenv('POSTGRES_USER', 'postgres')
         password = os.getenv('POSTGRES_PASSWORD', 'password123')
         
-        self.repo = PostgresRepository(dbname, user, password, host, port)
-        try:
-            self.repo.init_schema()
-        except Exception as e:
-            print(f"⚠️ Schema init skipped (already exists): {e}")
+        self.repo = PostgresORMRepository()
         print(f"PostgresRepo connected: {host}:{port}/{dbname}")
     
+    def ensure_schema(self):
+        """Manual trigger for schema initialization if not using Alembic."""
+        self.repo.init_schema()
+
     def __getattr__(self, name):
         """Delegate all methods to underlying PostgresRepository."""
         return getattr(self.repo, name)

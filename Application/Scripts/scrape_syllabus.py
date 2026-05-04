@@ -1,6 +1,10 @@
 from typing import Dict, List
-import argparse
 import os
+import argparse
+from utils.env_loader import load_root_env
+
+load_root_env()
+from Application.Ports.Astra_repo import AstraRepo
 from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabus_dict, log_cleaning_stats
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus

@@ -11,6 +11,8 @@ duckduckgo-search
 neo4j
 networkx
 numpy
+scipy
+matplotlib
 scikit-learn
 cassio
 langgraph
@@ -24,4 +26,4 @@ datasets
 torch
 bitsandbytes
 langchain-astradb>=0.2.0
-
+pytest-cov

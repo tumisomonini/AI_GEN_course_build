@@ -12,11 +12,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AuthorAgent:
-    def __init__(self, vector_store, repo=None, kg=None):
-        self.vector_store = vector_store
-        self.openai_client = None
-        self.repo = repo
-        self.kg = kg  # Knowledge Graph (Neo4j)
+    def __init__(self, manager=None, repo=None, kg=None):
+        self.manager = manager
+        self.vector_store = manager.astra.vector_store if manager else None
+        self.repo = manager.pg if manager else repo
+        self.kg = manager.kg if manager else kg
 
         # 1. Try Local Inference (Unsloth/vLLM/Ollama)
         local_url = os.getenv("LOCAL_LLM_URL")
@@ -42,15 +42,15 @@ class AuthorAgent:
         try:
             self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
             self.model = os.getenv(model_env, default_model)
-            print(f"✅ AuthorAgent using {base_url} with model: {self.model}")
+            logger.info(f"AuthorAgent using {base_url} with model: {self.model}")
             return True
         except Exception as e:
-            print(f"⚠️ LLM Init failed for {base_url}: {e}")
+            logger.warning(f"LLM Init failed for {base_url}: {e}")
             return False
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=4, max=30),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=15),
         retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.Timeout, openai.APIConnectionError)),
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
@@ -60,7 +60,7 @@ class AuthorAgent:
             raise ValueError("No LLM client initialized")
         return await self.openai_client.chat.completions.create(**kwargs)
 
-    async def generate_content(self, topic: str, state: SyllabusState = None, order: int = 0, reviewer=None) -> Chapter:
+    async def generate_content(self, topic: str, state: SyllabusState = None, order: int = 0, reviewer=None, max_retries: int = 1) -> Chapter:
         """Generate chapter content. Returns a Domain Chapter object."""
         run_id = state.run_id if (state and state.run_id and state.run_id > 0) else None
         if self.repo and run_id:
@@ -89,20 +89,22 @@ class AuthorAgent:
         level = state.level if state else 'beginner'
         duration = state.duration_months if state else 3
         
-        # Define configuration mapping for different durations
-        duration_configs = {
-            1: {"depth": "introductory", "words": "600-900"},
-            2: {"depth": "comprehensive overview", "words": "900-1200"},
-            3: {"depth": "in-depth and detailed", "words": "1200-1600"},
-        }
-        
-        # Get config with a fallback for durations > 3 months
-        config = duration_configs.get(duration, {"depth": "highly technical and exhaustive", "words": "1600-2200"})
+        # Statistically scale depth and word count based on course duration
+        if duration <= 1:
+            config = {"depth": "introductory", "words": "600-900"}
+        elif duration == 2:
+            config = {"depth": "comprehensive overview", "words": "900-1200"}
+        elif duration == 3:
+            config = {"depth": "in-depth and detailed", "words": "1200-1600"}
+        else:
+            # Scale words by ~200 per extra month beyond 3
+            base_words = 1600 + (min(duration, 12) - 3) * 200
+            config = {"depth": "highly technical and exhaustive", "words": f"{base_words}-{base_words+400}"}
         
         depth_instruction = config["depth"]
         word_count = config["words"]
 
-        chunk_text = "\n".join([f"CHUNK {i+1}: {c[:1000]}" for i, c in enumerate(chunks[:5])])
+        chunk_text = "\n".join([f"CHUNK {i+1}: {c[:2500]}" for i, c in enumerate(chunks[:8])])
         grounding_instruction = "Use ONLY the following scraped knowledge chunks as factual source material." if chunks else "Use your internal knowledge to provide accurate educational content."
 
         prompt = f"""Generate a {depth_instruction} educational chapter on '{topic}' for the '{course_title}' course.
@@ -114,12 +116,12 @@ COMPLIANCE NOTICE:
 - Strictly avoid generating harmful, biased, or non-educational content.
 
  {grounding_instruction}
- IMPORTANT: For every factual claim made, cite the chunk number used (e.g., [Chunk 1]). 
+ IMPORTANT: For every factual claim made, cite the chunk number used (e.g., [Source Chunk 1]). 
  If the chunks do not contain enough information, state this clearly rather than hallucinating.
 
-Knowledge chunks (Synthesize information across these sources):
+GROUND TRUTH KNOWLEDGE CHUNKS:
 {chunk_text if chunks else "No specific source chunks available."}
-Note: If chunks contain conflicting info, prioritize the most recent or detailed one.
+Note: Synthesize information across these sources. If chunks contain conflicting info, prioritize the most recent or detailed one.
 
 Structure:
 1. Learning objectives
@@ -128,23 +130,50 @@ Structure:
 4. Summary and exercises
 Approximately {word_count} words."""
         
+        current_prompt = prompt
+        for attempt in range(max_retries + 1):
+            try:
+                response = await self._call_llm(
+                    model=self.model,
+                    messages=[{"role": "user", "content": current_prompt}],
+                    max_tokens=2500
+                )
+                content = response.choices[0].message.content
+
+                if reviewer and attempt < max_retries:
+                    # Perform refinement check
+                    critique = await reviewer.validate_content_with_llm(content, topic)
+                    faithfulness = await reviewer.evaluate_rag_faithfulness(content, chunks)
+                    
+                    if critique.get("semantic_pass") and faithfulness.get("faithfulness_score", 1.0) > 0.7:
+                        if self.repo and run_id:
+                            self.repo.log_message(run_id, "AuthorAgent", f"Content passed review on attempt {attempt+1}")
+                        break
+                    else:
+                        # Refine the prompt for the next attempt
+                        if self.repo and run_id:
+                            self.repo.log_message(run_id, "AuthorAgent", f"Attempt {attempt+1} failed review. Feedback: {critique.get('feedback')}", "warning")
+                        
+                        # Provide specific hallucination data to improve the next decision cycle
+                        hallucinations = faithfulness.get("hallucinations", [])
+                        hallucination_str = f" Avoid these unsupported claims: {', '.join(hallucinations)}" if hallucinations else ""
+                        
+                        current_prompt = f"{prompt}\n\nREFINEMENT NEEDED: Your previous attempt was critiqued: {critique.get('feedback')}.{hallucination_str} Please address these issues and focus strictly on the provided source chunks."
+                        continue
+                break # Exit loop if no reviewer or final attempt
+            except Exception as e:
+                if attempt == max_retries:
+                    raise e
+
         try:
-            response = await self._call_llm(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=4000
-            )
-            if self.repo and run_id:
-                self.repo.log_message(run_id, "AuthorAgent", f"Successfully generated content for {topic}", "info")
-                
             return Chapter(
                 title=topic,
-                content=response.choices[0].message.content,
+                content=content,
                 chapter_order=order,
                 status="generated"
             )
         except Exception as e:
-            print(f"❌ Error generating chapter for {topic} after retries: {e}")
+            logger.error(f"Error generating chapter for {topic} after retries: {e}")
             return Chapter(
                 title=topic,
                 content=f"Error generating content: {str(e)}",
@@ -152,36 +181,22 @@ Approximately {word_count} words."""
                 status="error"
             )
 
-    async def _retrieve_chunks(self, query: str, k: int = 8, course_title: str = None, strategy: str = "vector") -> List[str]:
+    async def _retrieve_chunks(self, query: str, k: int = 8, course_title: str = None, strategy: str = "hybrid") -> List[str]:
         """
-        Enhanced retrieval with expanded context window and metadata filtering.
-        Supports Vector, KG, and Hybrid strategies.
+        TripleDB hybrid retrieval: Vector + KG + PG metadata.
         """
-        if not self.vector_store:
-            logger.error("Vector store not initialized.")
+        if not self.manager:
+            logger.error("TripleDBManager not available")
             return []
             
-        filters = {"course_title": course_title} if course_title else {}
-        try:
-            final_chunks = []
-
-            # Path 1: Knowledge Graph (Structural context)
-            if strategy in ["kg", "hybrid"] and self.kg:
-                details = self.kg.get_topic_details(query)
-                if details:
-                    final_chunks.append(f"CONCEPTUAL OVERVIEW: {details.get('description')}")
-                
-                prereqs = self.kg.get_prerequisites(query)
-                if prereqs:
-                    final_chunks.append(f"PREREQUISITES: This topic builds upon {', '.join(prereqs)}.")
-
-            # Path 2: Vector Store (Technical depth)
-            if strategy in ["vector", "hybrid"]:
-                results = self.vector_store.query(query, k=k, filter=filters)
-                if results:
-                    final_chunks.extend([result.get("document", "") for result in results if result.get("document")])
-
-            return final_chunks
-        except Exception as e:
-            logger.error(f"Vector search failed: {e}")
-            return []
+        # Use centralized manager logic
+        search_results = self.manager.hybrid_search(query, k=k, strategy=strategy)
+        
+        # Smart Ranking: Interleave results to ensure the KG definition is always present
+        # Logic: Metadata -> KG Context (Structure) -> Vector (Facts)
+        final_selection = []
+        final_selection.extend(search_results['pg_courses'])
+        final_selection.extend(search_results['kg_context']) # Elevated priority
+        final_selection.extend(search_results['vector'])
+        
+        return final_selection[:12] # Slightly larger window for GPT-4o-mini

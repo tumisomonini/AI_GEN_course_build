@@ -13,18 +13,9 @@ def prepare_autotrain_data():
     Fetch generated chapter content from Postgres and format it for 
     AutoTrain LLM fine-tuning.
     """
-    repo = PostgresRepo()
-    print("📥 Fetching training data from Postgres...")
-    
-    with repo.get_cursor() as cur:
-        # We only train on successfully generated content longer than 500 chars
-        cur.execute("""
-            SELECT c.title, c.content 
-            FROM chapters c 
-            WHERE c.status = 'generated' AND length(c.content) > 500
-        """)
-        rows = cur.fetchall()
-    repo.close()
+    with PostgresRepo() as repo:
+        print("📥 Fetching training data from Postgres using get_training_chapters...")
+        rows = repo.get_training_chapters(min_length=500)
 
     if not rows:
         print("❌ No high-quality training data found in database.")
@@ -35,7 +26,7 @@ def prepare_autotrain_data():
     # the model on your specific course-generation style.
     formatted_data = []
     for title, content in rows:
-        text = f"### Instruction: Write a comprehensive educational chapter about {title}.\n\n### Response: {content}"
+        text = f"### Instruction: Generate a comprehensive educational chapter on '{title}'.\n\n### Response: {content}"
         formatted_data.append({"text": text})
     
     df = pd.DataFrame(formatted_data)

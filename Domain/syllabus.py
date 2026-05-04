@@ -14,10 +14,13 @@ class SyllabusState(BaseModel):
     duration_months: int = 3
     topics: List[str] = Field(default_factory=list)
     syllabus: List[str] = Field(default_factory=list)
-    chapters: Dict[str, str] = Field(default_factory=dict)
+    # Changed from Dict[str, str] to support metadata like status and order.
+    chapters: List[Chapter] = Field(default_factory=list)
     scraped_syllabi: Optional[List[Any]] = None
     validated: bool = False
     generation_time: float = 0.0
+    reviewer_semantic_avg: float = 0.0
+    semantic_pass_rate: float = 0.0
     
     # Removed topics_must_be_non_empty validator.
     # The scrape_node is responsible for populating topics. 
@@ -67,7 +70,6 @@ class Syllabus(BaseModel):
     @classmethod
     def from_state(cls, state: SyllabusState) -> 'Syllabus':
         """Convert workflow state to final Syllabus"""
-        state_chapters = state.chapters if state.chapters is not None else {}
-        chapters = [Chapter(title=key, content=value) for key, value in state_chapters.items()]
+        chapters = sorted(state.chapters, key=lambda x: x.chapter_order)
         course = Course(title=state.title, audience='general', outcomes=state.syllabus)
         return cls(title=state.title, course=course, chapters=chapters)

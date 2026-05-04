@@ -52,7 +52,24 @@ async def scrape_syllabus(request: ScrapeRequest):
                                 "type": "relevant_syllabus_chunk"
                             })
         
-        # Vector store removed; chunks not upserted
+        # Upsert top chunks to Astra if available
+        if all_texts:
+            try:
+                from Application.API.dependencies import get_triple_db_manager
+                manager = get_triple_db_manager()
+                repo = manager.astra
+                if repo:
+                    import threading
+                    def background_upsert(texts, metas):
+                        try:
+                            repo.upsert_syllabus_chunks(texts, metas)
+                        except Exception as e:
+                            print(f"❌ Scrape endpoint background upsert failed: {e}")
+
+                    thread = threading.Thread(target=background_upsert, args=(all_texts, all_metadatas), daemon=True)
+                    thread.start()
+            except Exception as e:
+                print(f"⚠️ Astra upsert initialization failed: {e}")
         
         return {
             "status": "success",
@@ -70,7 +87,6 @@ async def generate_syllabus(request: SyllabusRequest):
     if not agents:
         raise HTTPException(503, "Agents not initialised — server may still be starting up")
     try:
-        topics = request.topics
         # If title provided, could optionally scrape first (future enhancement)
         if request.title:
             print(f"Note: Title '{request.title}' provided - consider scraping first via /scrape endpoint")
@@ -79,15 +95,21 @@ async def generate_syllabus(request: SyllabusRequest):
             agents["planner"], agents["author"], agents["reviewer"], agents["assembler"]
         )
         invoke_data = {
-            "topics": topics,
+            "title": request.title or "Untitled Course",
+            "topics": request.topics,
             "syllabus": [],
-            "chapters": {},
-            "validated": False
+            "chapters": [],
+            "validated": False,
+            "level": "beginner",
+            "duration_months": 3
         }
-        if request.title:
-            invoke_data["title"] = request.title
-        result = workflow.invoke(invoke_data)
-        return {"status": "success", "syllabus": result["syllabus"], "chapters": list(result["chapters"].keys())}
+        
+        # Must use ainvoke for graphs with async nodes (Author/Reviewer)
+        result = await workflow.ainvoke(invoke_data)
+        
+        # chapters is a List[Chapter], extract titles for response
+        chapter_titles = [ch.title for ch in result.get("chapters", [])]
+        return {"status": "success", "syllabus": result["syllabus"], "chapters": chapter_titles}
     except Exception as e:
         import traceback
         print("🚨 SYLLABUS GENERATION FULL TRACEBACK:")

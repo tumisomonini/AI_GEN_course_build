@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Body
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, AliasChoices
 from typing import Dict, Any, List, Optional
 from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
@@ -13,12 +13,21 @@ from Application.Ports.postgres_repo import PostgresRepo
 router = APIRouter(tags=["Courses"])
 
 class InlineScraper:
-    """Minimal scraper class for search - core scraping in workflow"""
+    """Minimal scraper class for search - delegates to initialized Scraper."""
+    def __init__(self):
+        from Application.Ports.scraper import get_scraper
+        self._scraper = get_scraper()
+
     async def scrape_relevant_sources(self, topic: str) -> Dict:
+        results = self._scraper.search_and_scrape(topic, max_results=3)
+        valid = [r for r in results if 'error' not in r]
         return {
-            "total_sources": 3,
-            "quality_score": 85,
-            "sources": [{"title": f"'{topic}' tutorial", "quality": 85}]
+            "total_sources": len(valid),
+            "quality_score": valid[0].get('quality_score', 0) if valid else 0,
+            "sources": [
+                {"title": r.get('source_title', f"'{topic}' tutorial"), "quality": r.get('quality_score', 0)}
+                for r in valid[:3]
+            ]
         }
 
 inline_scraper = InlineScraper()
@@ -51,6 +60,8 @@ class CourseGenerateRequest(BaseModel):
 @router.get("/search-courses")
 async def search_courses(q: str = "", repo: PostgresRepo = Depends(get_postgres_repo)):
     """Search existing courses and return counts"""
+    if not repo:
+        raise HTTPException(status_code=503, detail="Database connection not available")
     results = repo.search_courses(q) if q else []
     return {
         "query": q,
@@ -67,6 +78,8 @@ async def generate_course_template(
     repo: PostgresRepo = Depends(get_postgres_repo)
 ):
     "Generate TOC-style template only (cheap, no LLM content)"
+    if not repo:
+        raise HTTPException(status_code=503, detail="Database connection not available")
     # 1. Create a placeholder course to get an ID for progress tracking
     course_title = request.title or request.topic
     template_stub = {
@@ -208,7 +221,7 @@ def outline_generation_task(request: CourseGenerateRequest, course_id: int, run_
 async def approve_and_generate_full(
     course_id: int,
     background_tasks: BackgroundTasks,
-    modifications: Optional[List[str]] = None,
+    modifications: Optional[List[str]] = Body(None),
     repo: PostgresRepo = Depends(get_postgres_repo)
 ):
     """

@@ -1,5 +1,5 @@
 from neo4j import GraphDatabase
-from .neo4j_repo import Neo4jRepository
+from .neo4j_repo import Neo4jNeomodelRepository as Neo4jRepository
 from typing import List
 
 __all__ = ["init_graphdb"]

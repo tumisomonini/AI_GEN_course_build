@@ -1,161 +1,72 @@
-from neo4j import GraphDatabase
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 import logging
-import networkx as nx
 import numpy as np
 from sklearn.cluster import KMeans
+import networkx as nx
+from Application.Infrastructure.graphDb.models import Topic
+from Application.Infrastructure.graphDb.neo4j_repo import Neo4jNeomodelRepository
 
 logger = logging.getLogger(__name__)
 
 class KnowledgeGraph:
     """
-    A class to interact with the Neo4j knowledge graph for course topics and prerequisites.
+    Refactored KnowledgeGraph using neomodel OGM. Connection managed by Neo4jNeomodelRepository.
     """
-
-    def __init__(self, driver: GraphDatabase.driver, database: str = "neo4j"):
-        """
-        Initialize the KnowledgeGraph with an existing Neo4j driver.
-        """
-        self._driver = driver
+    
+    def __init__(self, repo: Neo4jNeomodelRepository, database: str = "neo4j"):
+        self.repo = repo
         self._database = database
-        logger.info("KnowledgeGraph initialized with shared driver")
+        logger.info("KnowledgeGraph initialized with neomodel repo")
 
     def add_topic(self, topic_name: str, description: str = "") -> bool:
-        """
-        Add a new topic to the knowledge graph.
-
-        Args:
-            topic_name (str): The name of the topic
-            description (str): A description of the topic
-
-        Returns:
-            bool: True if the topic was added successfully, False otherwise
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MERGE (t:Topic {name: $topic_name})
-                    ON CREATE SET t.description = $description, t.created_at = datetime()
-                    ON MATCH SET t.description = $description, t.updated_at = datetime()
-                    RETURN t
-                    """,
-                    topic_name=topic_name,
-                    description=description
-                )
-                return result.single() is not None
+            topic, created = Topic.get_or_create({'name': topic_name}, description=description)
+            if created:
+                topic.description = description
+                topic.save()
+            return True
         except Exception as e:
             logger.error(f"Failed to add topic {topic_name}: {str(e)}")
             return False
 
     def add_prerequisite(self, topic_name: str, prerequisite_name: str) -> bool:
-        """
-        Add a prerequisite relationship between two topics.
-
-        Args:
-            topic_name (str): The name of the topic
-            prerequisite_name (str): The name of the prerequisite topic
-
-        Returns:
-            bool: True if the relationship was added successfully, False otherwise
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (a:Topic {name: $topic_name})
-                    MATCH (b:Topic {name: $prerequisite_name})
-                    MERGE (a)-[r:PREREQUISITE]->(b)
-                    RETURN r
-                    """,
-                    topic_name=topic_name,
-                    prerequisite_name=prerequisite_name
-                )
-                return result.single() is not None
+            topic = Topic.nodes.get(name=topic_name)
+            prereq, _ = Topic.get_or_create({'name': prerequisite_name})
+            topic.prerequisites.connect(prereq)
+            return True
+        except Topic.DoesNotExist:
+            logger.warning(f"Topic {topic_name} not found")
+            return False
         except Exception as e:
             logger.error(f"Failed to add prerequisite {prerequisite_name} for {topic_name}: {str(e)}")
             return False
 
     def get_prerequisites(self, topic_name: str) -> List[str]:
-        """
-        Get all prerequisites for a given topic.
-
-        Args:
-            topic_name (str): The name of the topic
-
-        Returns:
-            List[str]: A list of prerequisite topic names
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (a:Topic {name: $topic_name})-[:PREREQUISITE]->(b:Topic)
-                    RETURN b.name AS prerequisite
-                    """,
-                    topic_name=topic_name
-                )
-                return [record["prerequisite"] for record in result]
-        except Exception as e:
-            logger.error(f"Failed to get prerequisites for {topic_name}: {str(e)}")
+            topic = Topic.nodes.get(name=topic_name)
+            return [p.name for p in topic.prerequisites.all()]
+        except Topic.DoesNotExist:
+            logger.warning(f"Topic {topic_name} not found")
             return []
 
     def get_dependent_topics(self, topic_name: str) -> List[str]:
-        """
-        Get all topics that depend on the given topic as a prerequisite.
-
-        Args:
-            topic_name (str): The name of the topic
-
-        Returns:
-            List[str]: A list of topic names that depend on the given topic
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (a:Topic)-[:PREREQUISITE]->(b:Topic {name: $topic_name})
-                    RETURN a.name AS dependent_topic
-                    """,
-                    topic_name=topic_name
-                )
-                return [record["dependent_topic"] for record in result]
-        except Exception as e:
-            logger.error(f"Failed to get dependent topics for {topic_name}: {str(e)}")
+            topic = Topic.nodes.get(name=topic_name)
+            return [d.name for d in topic.dependents.all()]
+        except Topic.DoesNotExist:
             return []
 
     def get_all_topics(self) -> List[Dict[str, str]]:
-        """
-        Get all topics in the knowledge graph.
-
-        Returns:
-            List[Dict[str, str]]: A list of dictionaries containing topic information
-        """
-        try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (t:Topic)
-                    RETURN t.name AS name, coalesce(t.description, "") AS description
-                    """
-                )
-                return [{"name": record["name"], "description": record["description"]} for record in result]
-        except Exception as e:
-            logger.error(f"Failed to get all topics: {str(e)}")
-            return []
+        topics = Topic.nodes.all()
+        return [{"name": t.name, "description": t.description} for t in topics]
 
     def cluster_topics(self, topic_embeddings: Dict[str, List[float]], n_clusters: int = 3) -> Dict[int, List[str]]:
-        """
-        Group topics into thematic clusters using KMeans.
-        Helps organize a long course into logically grouped modules.
-        """
         if not topic_embeddings:
             return {}
 
         topic_names = list(topic_embeddings.keys())
         vectors = np.array(list(topic_embeddings.values()))
-        
-        # n_clusters shouldn't exceed number of topics
         n_clusters = min(n_clusters, len(topic_names))
         
         kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
@@ -169,216 +80,108 @@ class KnowledgeGraph:
         return clusters
 
     def get_topic_order(self, topic_names: List[str]) -> List[str]:
-        """
-        Get an optimal order for studying the given topics based on prerequisites.
-
-        Args:
-            topic_names (List[str]): A list of topic names
-
-        Returns:
-            List[str]: An ordered list of topic names
-        """
         if not topic_names:
             return []
-            
+        G = nx.DiGraph()
+        all_nodes = set(topic_names)
+        for topic in list(all_nodes):
+            prereqs = self.repo.get_prerequisites(topic)
+            for prereq in prereqs:
+                G.add_edge(prereq, topic)
+                all_nodes.add(prereq)
         try:
-            G = nx.DiGraph()
-            # Add all requested topics as nodes
-            for name in topic_names:
-                G.add_node(name)
-
-            with self._driver.session(database=self._database) as session:
-                # Fetch all relevant prerequisite relationships within the set of requested topics
-                result = session.run(
-                    """
-                    MATCH (a:Topic)-[:PREREQUISITE]->(b:Topic)
-                    WHERE a.name IN $topic_names AND b.name IN $topic_names
-                    RETURN a.name AS source, b.name AS target
-                    """,
-                    topic_names=topic_names
-                )
-                for record in result:
-                    # Note: PREREQUISITE relationship is (topic)->(required_topic)
-                    # For topological sort, we want (required_topic)->(topic)
-                    G.add_edge(record["target"], record["source"])
-
-            # Returns a valid topological sort, or handles cycles by falling back to original order
-            if nx.is_directed_acyclic_graph(G):
-                return list(nx.topological_sort(G))
-            else:
-                logger.warning("Cycles detected in KnowledgeGraph dependencies. Falling back to input order.")
-                return topic_names
-        except Exception as e:
-            logger.error(f"Failed to get topic order: {str(e)}")
-            return topic_names
+            topo_order = list(nx.topological_sort(G))
+            ordered = [t for t in topo_order if t in topic_names]
+            logger.info(f"Applied topological sort to {len(ordered)} topics")
+            return ordered
+        except nx.NetworkXUnfeasible:
+            logger.warning("Graph has cycles, falling back to alphabetical order")
+            return sorted(topic_names)
 
     def validate_prerequisites(self, topic_order: List[str]) -> bool:
-        """
-        Validate that all prerequisites are satisfied in the given topic order.
+        for i, topic_name in enumerate(topic_order):
+            try:
+                topic = Topic.nodes.get(name=topic_name)
+                prereqs = [p.name for p in topic.prerequisites.all()]
+                for prereq in prereqs:
+                    if prereq not in topic_order[:i]:
+                        logger.warning(f"Prerequisite {prereq} for {topic_name} not before it")
+                        return False
+            except Topic.DoesNotExist:
+                continue
+        return True
 
-        Args:
-            topic_order (List[str]): An ordered list of topic names
-
-        Returns:
-            bool: True if all prerequisites are satisfied, False otherwise
-        """
+    def get_central_topics(self, topic_names: Optional[List[str]] = None, limit: int = 5) -> List[str]:
+        """Get most central topics using NetworkX PageRank."""
+        if topic_names is None:
+            all_topics = self.get_all_topics()
+            topic_names = [t['name'] for t in all_topics]
+        if not topic_names:
+            return []
+        # Build same graph as topo
+        G = nx.DiGraph()
+        all_nodes = set(topic_names)
+        for topic in list(all_nodes):
+            prereqs = self.repo.get_prerequisites(topic)
+            for prereq in prereqs:
+                G.add_edge(prereq, topic)
+                all_nodes.add(prereq)
+        if len(G) == 0:
+            return sorted(topic_names)[:limit]
         try:
-            with self._driver.session(database=self._database) as session:
-                for i, topic in enumerate(topic_order):
-                    result = session.run(
-                        """
-                        MATCH (a:Topic {name: $topic_name})-[:PREREQUISITE]->(b:Topic)
-                        RETURN b.name AS prerequisite
-                        """,
-                        topic_name=topic
-                    )
-                    prerequisites = [record["prerequisite"] for record in result]
-                    for prerequisite in prerequisites:
-                        if prerequisite not in topic_order[:i]:
-                            logger.warning(f"Prerequisite {prerequisite} for {topic} not satisfied")
-                            return False
-                return True
+            pagerank_scores = nx.pagerank(G.to_undirected(), alpha=0.85)
+            sorted_topics = sorted(
+                [(name, pagerank_scores.get(name, 0)) for name in topic_names],
+                key=lambda x: x[1],
+                reverse=True
+            )
+            central = [name for name, _ in sorted_topics[:limit]]
+            logger.info(f"Central topics by PageRank: {central}")
+            return central
         except Exception as e:
-            logger.error(f"Failed to validate prerequisites: {str(e)}")
-            return False
+            logger.warning(f"PageRank failed: {e}, fallback to sorted")
+            return sorted(topic_names)[:limit]
 
-    def get_topic_graph(self, topic_name: str, depth: int = 1) -> Dict[str, Set[str]]:
-        """
-        Get a subgraph of topics related to the given topic up to a certain depth.
-
-        Args:
-            topic_name (str): The name of the central topic
-            depth (int): The depth of relationships to include
-
-        Returns:
-            Dict[str, Set[str]]: A dictionary representing the topic graph
-        """
+    def get_topic_graph(self, topic_name: str, depth: int = 1) -> Dict[str, set]:
         graph = {}
         try:
-            with self._driver.session(database=self._database) as session:
-                # Get prerequisites
-                for current_depth in range(1, depth + 1):
-                    result = session.run(
-                        """
-                        MATCH path = (a:Topic {name: $topic_name})-[:PREREQUISITE*1..$depth]->(b:Topic)
-                        RETURN a.name AS source, b.name AS target
-                        """,
-                        topic_name=topic_name,
-                        depth=current_depth
-                    )
-                    for record in result:
-                        source = record["source"]
-                        target = record["target"]
-                        if source not in graph:
-                            graph[source] = set()
-                        if target not in graph:
-                            graph[target] = set()
-                        graph[source].add(target)
-
-                # Get dependencies
-                for current_depth in range(1, depth + 1):
-                    result = session.run(
-                        """
-                        MATCH path = (a:Topic)-[:PREREQUISITE*1..$depth]->(b:Topic {name: $topic_name})
-                        RETURN a.name AS source, b.name AS target
-                        """,
-                        topic_name=topic_name,
-                        depth=current_depth
-                    )
-                    for record in result:
-                        source = record["source"]
-                        target = record["target"]
-                        if source not in graph:
-                            graph[source] = set()
-                        if target not in graph:
-                            graph[target] = set()
-                        graph[source].add(target)
-
-                return graph
-        except Exception as e:
-            logger.error(f"Failed to get topic graph for {topic_name}: {str(e)}")
+            topic = Topic.nodes.get(name=topic_name)
+            
+            # Prerequisites (outgoing)
+            prereqs = [p.name for p in topic.prerequisites.all()] if hasattr(topic, 'prerequisites') and topic.prerequisites else []
+            graph[topic_name] = set(prereqs)
+            
+            # Dependents (incoming)
+            dependents = [d.name for d in topic.dependents.all()]
+            for dep in dependents:
+                if dep not in graph:
+                    graph[dep] = set()
+                graph[dep].add(topic_name)
+            
+            return graph
+        except Topic.DoesNotExist:
             return {}
 
     def get_related_topics(self, topic_name: str, limit: int = 5) -> List[str]:
-        """
-        Get topics related to the given topic.
-
-        Args:
-            topic_name (str): The name of the topic
-            limit (int): The maximum number of related topics to return
-
-        Returns:
-            List[str]: A list of related topic names
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (a:Topic {name: $topic_name})-[:RELATED_TO*1..2]-(b:Topic)
-                    WHERE a <> b
-                    RETURN b.name AS related_topic
-                    LIMIT $limit
-                    """,
-                    topic_name=topic_name,
-                    limit=limit
-                )
-                return [record["related_topic"] for record in result]
-        except Exception as e:
-            logger.error(f"Failed to get related topics for {topic_name}: {str(e)}")
+            topic = Topic.nodes.get(name=topic_name)
+            related = [r.name for r in topic.related_to.all()]
+            return related[:limit]
+        except Topic.DoesNotExist:
             return []
 
     def add_related_topic(self, topic_name: str, related_topic_name: str) -> bool:
-        """
-        Add a related topic relationship between two topics.
-
-        Args:
-            topic_name (str): The name of the topic
-            related_topic_name (str): The name of the related topic
-
-        Returns:
-            bool: True if the relationship was added successfully, False otherwise
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (a:Topic {name: $topic_name})
-                    MATCH (b:Topic {name: $related_topic_name})
-                    MERGE (a)-[r:RELATED_TO]->(b)
-                    MERGE (b)-[s:RELATED_TO]->(a)
-                    RETURN r, s
-                    """,
-                    topic_name=topic_name,
-                    related_topic_name=related_topic_name
-                )
-                return result.single() is not None
-        except Exception as e:
-            logger.error(f"Failed to add related topic {related_topic_name} for {topic_name}: {str(e)}")
+            t1 = Topic.nodes.get(name=topic_name)
+            t2 = Topic.nodes.get(name=related_topic_name)
+            t1.related_to.connect(t2)
+            return True
+        except Topic.DoesNotExist:
             return False
 
     def get_topic_details(self, topic_name: str) -> Optional[Dict[str, str]]:
-        """
-        Get detailed information about a topic.
-
-        Args:
-            topic_name (str): The name of the topic
-
-        Returns:
-            Optional[Dict[str, str]]: A dictionary with topic details, or None if not found
-        """
         try:
-            with self._driver.session(database=self._database) as session:
-                result = session.run(
-                    """
-                    MATCH (t:Topic {name: $topic_name})
-                    RETURN t.name AS name, coalesce(t.description, "") AS description
-                    """,
-                    topic_name=topic_name
-                )
-                record = result.single()
-                if record:
-                    return {"name": record["name"], "description": record["description"]}
-                return None
-        except Exception as e:
-            logger.error(f"Failed to get details for {topic_name}: {str(e)}")
+            topic = Topic.nodes.get(name=topic_name)
+            return {"name": topic.name, "description": topic.description}
+        except Topic.DoesNotExist:
             return None

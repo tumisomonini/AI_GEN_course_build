@@ -1,18 +1,21 @@
-# OpenRouter Setup - INTEGRATED ✅
+# OpenRouter Setup - KEY REQUIRED ✅
 
-## .env Template Created!
-`.env` now includes:
+## .env Template Ready!
+Edit `.env`:
 ```
-OPENROUTER_API_KEY=sk-or-...  # Add your key here (REQUIRED)
-MISTRAL_API_KEY=...           # Alt OK
+OPENROUTER_API_KEY=sk-or-v1-your-key-here  # Get from https://openrouter.ai/keys (REQUIRED for agents)
+MISTRAL_API_KEY=...  # Optional fallback
 ```
 
-## Quick Start:
-1. **Add your key**: Edit `.env` → `OPENROUTER_API_KEY=sk-or-v1-...`
-2. **Restart**: `Ctrl+C && ./run_dev.sh`
-3. **Health**: `curl http://localhost:8000/health` → `"agents": "ready"`
-4. **Generate**: http://localhost:8000/Pages/dashboard.html
+## Steps:
+1. Sign up: https://openrouter.ai → Dashboard → Keys
+2. Copy `sk-or-v1-...`
+3. Paste into `.env`
+4. Test: `python test_llm_keys.py` → ✅ "LLM API key valid"
+5. Restart server: `./run_dev.sh`
+6. Health: `curl http://localhost:8000/health`
+7. Demo: Open Pages/dashboard.html
 
-Free tier works (llama3.1-8b). Paid for speed/heavier use.
+**Neo4j cloud skipped per task.**
 
-**Ready! 🎉**
+**Program ready once key set! 🚀**

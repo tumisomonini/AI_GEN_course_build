@@ -10,14 +10,8 @@ load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
 def initialize_real_agents():
     """Initialize agents with production settings"""
-    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, get_vector_store
+    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, _neo4j_repo, get_vector_store
     
-    raw_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    neo4j_uri = sanitize_neo4j_uri(raw_uri)
-    neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD")
-    neo4j_database = os.getenv("NEO4J_DATABASE", "neo4j")
-
     # Use pre-initialized repos from lifespan to avoid redundant connection failures
     repo = _postgres_repo
     if repo is None:
@@ -33,9 +27,14 @@ def initialize_real_agents():
     from Application.Agents.Reviewer_agent import ReviewerAgent
     from Application.Agents.Assembler_agent import AssemblerAgent
 
+    # Reuse the already-connected Neo4j singleton (local Docker fallback already resolved)
+    neo4j_repo = _neo4j_repo
+    if neo4j_repo is None:
+        print("⚠️ Warning: PlannerAgent initialized without Neo4j KG (Neo4j Down)")
+
     agents = {
-        "planner": PlannerAgent(neo4j_uri, neo4j_user, neo4j_password, neo4j_database),
-        "author": AuthorAgent(vector_store, repo=repo),
+        "planner": PlannerAgent(neo4j_repo),
+        "author": AuthorAgent(manager=None, repo=repo, kg=None),
         "reviewer": ReviewerAgent(),
         "assembler": AssemblerAgent()
     }

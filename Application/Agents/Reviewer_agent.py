@@ -48,8 +48,8 @@ class ReviewerAgent:
             return False
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=4, max=30),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=15),
         retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.Timeout, openai.APIConnectionError)),
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
@@ -78,8 +78,13 @@ class ReviewerAgent:
             )
             res_data = json.loads(response.choices[0].message.content)
             # Calculate an average score
-            avg_score = (res_data.get('accuracy', 0) + res_data.get('depth', 0) + res_data.get('clarity', 0)) / 3
-            semantic_pass = avg_score >= 0.6
+            accuracy = res_data.get('accuracy', 0)
+            depth = res_data.get('depth', 0)
+            clarity = res_data.get('clarity', 0)
+            avg_score = (accuracy + depth + clarity) / 3
+            
+            # Stricter requirement: Average >= 0.6 AND accuracy must be at least 0.7
+            semantic_pass = avg_score >= 0.6 and accuracy >= 0.7
             return {"semantic_score": round(avg_score, 2), "semantic_pass": semantic_pass, "feedback": res_data.get('feedback', '')}
         except Exception as e:
             logger.error(f"ReviewerAgent LLM validation failed after retries: {e}")
@@ -98,8 +103,9 @@ class ReviewerAgent:
             }
 
         prompt = (
-            f"Analyze the user request: '{query}'\n"
+            f"Analyze the user request for an educational topic: '{query}'\n"
             "Determine if this is an educational course topic and if it is safe (No PII, no harmful content).\n"
+            "Crucial: If the user is asking to modify an existing syllabus, consider it valid and safe.\n"
             "Return a JSON object: {'is_valid': bool, 'is_safe': bool, 'reason': string}."
         )
         try:
@@ -122,7 +128,7 @@ class ReviewerAgent:
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"Safety check failed: {e}")
-            return {"is_valid": True, "is_safe": True, "reason": "Bypassed due to error"}
+            return {"is_valid": False, "is_safe": False, "reason": f"Safety check error: {str(e)}"}
 
     async def route_query(self, query: str) -> Dict[str, Any]:
         """
@@ -137,10 +143,10 @@ class ReviewerAgent:
         prompt = (
             f"Analyze the educational query: '{query}'\n"
             "Classify the best retrieval strategy:\n"
-            "1. 'vector': For specific factual questions, technical details, or code snippets.\n"
-            "2. 'kg': For conceptual mapping, prerequisite identification, or topic definitions.\n"
-            "3. 'hybrid': For broad topics requiring both structured relationships and deep technical data.\n"
-            "Return ONLY a JSON object: {'strategy': 'vector'|'kg'|'hybrid', 'reason': 'string'}."
+            "- 'vector': Use if the user asks for implementation details, syntax, API references, or troubleshooting.\n"
+            "- 'kg': Use if the user asks about learning paths, how topics connect, or high-level definitions.\n"
+            "- 'hybrid': Use for generating full chapters, lesson plans, or comprehensive guides.\n"
+            "Return a JSON object: {'strategy': 'vector'|'kg'|'hybrid', 'confidence': 0.0-1.0, 'reason': 'string'}."
         )
         try:
             response = await self._call_llm(
@@ -160,7 +166,7 @@ class ReviewerAgent:
         if not source_chunks:
             return {"score": 1.0, "reason": "No sources provided for grounding check."}
             
-        sources_text = "\n".join([f"Source {i}: {s[:600]}" for i, s in enumerate(source_chunks[:5])])
+        sources_text = "\n".join([f"Source {i}: {s[:1500]}" for i, s in enumerate(source_chunks[:8])])
         prompt = (
             "Act as a RAG Quality Auditor. Analyze the content against the provided sources.\n"
             "1. Faithfulness: Are the claims supported by sources?\n"
@@ -194,8 +200,9 @@ class ReviewerAgent:
         return min(1.0, score + length_bonus)
 
     def validate_factual_grounding(self, content: str, source: str = "") -> bool:
-        """Check content has substance — at least 100 chars and not placeholder text."""
-        if not content or len(content) < 100:
+        """Check content has substance — at least 500 chars for a full chapter."""
+        # Statistical analysis: A valid educational section averages 150-200 words (~1000 chars)
+        if not content or len(content) < 500:
             return False
         placeholder_phrases = ['generation timeout', ' theory content for', 'placeholder']
         return not any(p in content.lower() for p in placeholder_phrases)

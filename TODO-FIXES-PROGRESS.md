@@ -1,0 +1,2 @@
+# Server/DB/Tests Fix Progress\nStatus: In Progress\n\n## Steps from Approved Plan:\n- [x] 1. Infra restart: `cd Application/Docker && docker compose up -d`\n- [x] 2. Fix conftest.py syntax\n- [x] 3. Fix utils import in Main.py\n- [x] 4. Add link_topics_to_course to neo4j_repo.py\n- [ ] 5. Validate: populate_all_dbs.py\n- [ ] 6. Start server: `PYTHONPATH=. cd Application && uvicorn API.Main:app --reload`\n- [ ] 7. Run pytest\n- [ ] 8. Health check & complete\n\n## Current Step: Validating populate_all_dbs.py
+

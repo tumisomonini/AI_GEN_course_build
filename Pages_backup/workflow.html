@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Course Builder - Unified Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+    <script src="components/toast-notifier.js" defer></script>
+    <script src="components/session-manager.js" defer></script>
+    <script src="components/stepper.js" defer></script>
+    <script src="components/utils.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .step-active { color: #3b82f6; border-color: #3b82f6; }
+        .step-complete { color: #10b981; border-color: #10b981; }
+        .log-entry { font-family: 'Fira Code', monospace; font-size: 0.85rem; }
+        [data-step] { display: none; }
+        #step1[data-step="1"], #step2[data-step="2"], #step3[data-step="3"] { display: block; }
+        /* Level pills styles */
+        .level-btn {
+            @apply hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-95;
+        }
+        .level-btn.selected {
+            @apply bg-blue-600 text-white border-blue-600 shadow-md scale-105 font-extrabold;
+        }
+        .level-beginner.selected {
+            @apply bg-emerald-600 border-emerald-600;
+        }
+        .level-intermediate.selected {
+            @apply bg-amber-600 border-amber-600;
+        }
+        .level-advanced.selected {
+            @apply bg-red-600 border-red-600;
+        }
+
+@media (max-width: 768px) {
+            .mobile-console { display: none; }
+            .mobile-nav-open { @apply block; }
+            input, select, button { min-height: 48px !important; padding: 16px !important; font-size: 16px !important; }
+            .level-btn { min-height: 56px; padding: 20px 12px !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+    <!-- Global Header -->
+    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center gap-2 flex-1">
+            <button id="mobile-menu-btn" class="lg:hidden p-1 -ml-1">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+            <div class="bg-blue-600 p-2 rounded-lg text-white">
+                <i data-lucide="graduation-cap"></i>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight">AI Course Builder</h1>
+        </div>
+        <div id="health-indicators" class="flex gap-4 text-xs font-medium hidden md:flex">
+            <span class="flex items-center gap-1.5 py-1 px-2 rounded-full bg-slate-100 health-badge" id="health-pg">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span> Postgres
+            </span>
+            <span class="flex items-center gap-1.5 py-1 px-2 rounded-full bg-slate-100 health-badge" id="health-neo">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span> Neo4j
+            </span>
+            <span class="flex items-center gap-1.5 py-1 px-2 rounded-full bg-slate-100 health-badge" id="health-astra">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span> AstraDB
+            </span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="step-indicator-mobile" class="text-sm font-bold hidden md:block"></span>
+            <button id="step-prev" class="px-4 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hidden" data-step-prev>← Prev</button>
+            <button id="step-next" class="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold hidden" data-step-next>Next</button>
+        </div>
+    </nav>
+
+    <!-- Mobile Drawer -->
+    <div id="mobile-drawer" class="fixed inset-0 bg-slate-900/80 z-40 lg:hidden translate-x-full transition-transform">
+        <div class="bg-white w-64 h-full p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-lg font-bold">Navigation</h2>
+                <button onclick="toggleMobileMenu()" class="p-1">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <button id="step-prev-mobile" class="w-full text-left px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-lg" data-step-prev>← Previous Step</button>
+                <button id="step-next-mobile" class="w-full text-left px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold" data-step-next>Next Step →</button>
+                <button onclick="window.sessionManager.clear()" class="w-full px-4 py-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50">New Course</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-6xl mx-auto p-6 pb-20 space-y-8">
+        <!-- Stepper -->
+        <div id="stepper-container" class="stepper-container flex justify-center max-w-4xl mx-auto relative mb-12">
+            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 -z-10 -translate-y-1/2"></div>
+            <div class="step flex flex-col items-center gap-2 bg-slate-50 px-6 py-4 cursor-pointer transition-all hover:scale-105" data-step-num="1" id="step-1">
+                <div class="w-12 h-12 rounded-full border-2 bg-white flex items-center justify-center font-bold text-lg step-circle">1</div>
+                <span class="text-sm font-semibold whitespace-nowrap">Create Course</span>
+            </div>
+            <div class="step flex flex-col items-center gap-2 bg-slate-50 px-6 py-4 cursor-pointer transition-all hover:scale-105" data-step-num="2" id="step-2">
+                <div class="w-12 h-12 rounded-full border-2 bg-white flex items-center justify-center font-bold text-lg step-circle">2</div>
+                <span class="text-sm font-semibold whitespace-nowrap">Review & Edit</span>
+            </div>
+            <div class="step flex flex-col items-center gap-2 bg-slate-50 px-6 py-4 cursor-pointer transition-all hover:scale-105" data-step-num="3" id="step-3">
+                <div class="w-12 h-12 rounded-full border-2 bg-white flex items-center justify-center font-bold text-lg step-circle">3</div>
+                <span class="text-sm font-semibold whitespace-nowrap">Download</span>
+            </div>
+        </div>
+
+        <!-- Workflow Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Main Content -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Step 1: Create Course (integrated from test_interface) -->
+                <section id="step1" data-step="1" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-start mb-6">
+                        <h2 class="text-2xl font-bold flex items-center gap-3">
+                            <i data-lucide="plus-circle" class="text-blue-600 w-8 h-8"></i>
+                            Create New Course
+                        </h2>
+                    </div>
+                    <form id="course-create-form" class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-semibold text-slate-700">Course Topic <span class="text-red-500">*</span></label>
+                            <input type="text" name="title" required minlength="3" maxlength="255" placeholder="e.g. Advanced Rust Systems Programming" 
+                                class="w-full px-5 py-4 rounded-xl border-2 border-slate-200 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-lg transition-all shadow-sm">
+                            <div id="title-status" class="text-sm"></div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-3">
+                                <label class="block text-sm font-semibold text-slate-700">Difficulty Level</label>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <button type="button" class="level-btn py-4 px-6 border-2 rounded-xl font-bold text-sm transition-all level-beginner selected" data-level="beginner">
+                                        🟢 Beginner
+                                    </button>
+                                    <button type="button" class="level-btn py-4 px-6 border-2 rounded-xl font-bold text-sm transition-all level-intermediate" data-level="intermediate">
+                                        🟡 Intermediate
+                                    </button>
+                                    <button type="button" class="level-btn py-4 px-6 border-2 rounded-xl font-bold text-sm transition-all level-advanced" data-level="advanced">
+                                        🔴 Advanced
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <label class="block text-sm font-semibold text-slate-700">Duration</label>
+                                <div class="flex items-center justify-center gap-4 p-4 bg-slate-50 rounded-xl">
+                                    <button type="button" class="dur-btn w-12 h-12 rounded-full border-2 font-bold text-xl" id="dur-minus" data-delta="-1">−</button>
+                                    <span id="duration-display" class="text-2xl font-bold text-slate-800">3 months</span>
+                                    <button type="button" class="dur-btn w-12 h-12 rounded-full border-2 font-bold text-xl" id="dur-plus" data-delta="1">+</button>
+                                </div>
+                                <small class="text-slate-500">1-12 months</small>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-bold py-5 px-8 rounded-2xl text-lg shadow-2xl hover:shadow-3xl hover:-translate-y-1 transition-all duration-300 generate-btn" disabled>
+                            🚀 Generate Course Template
+                        </button>
+                    </form>
+                    <div id="existing-courses" class="mt-8 hidden">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i data-lucide="search" class="w-5 h-5"></i>Similar Courses
+                        </h3>
+                        <div id="course-search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                </section>
+
+                <!-- Step 2: Review & Edit Template -->
+                <section id="step2" data-step="2" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hidden">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                        <i data-lucide="edit-3" class="text-emerald-600 w-8 h-8"></i>
+                        Review & Edit Template
+                    </h2>
+                    <div id="template-loading" class="text-center py-12">
+                        <div class="w-16 h-16 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p class="text-lg font-semibold text-slate-600">Loading template...</p>
+                    </div>
+                    <div id="template-editor" class="hidden space-y-4">
+                        <div class="flex gap-4 items-center">
+                            <h3 id="course-title-header" class="text-xl font-bold flex-1"></h3>
+                            <span id="template-badge" class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-bold">Real Scraped Data</span>
+                        </div>
+                        <div id="chapters-editor" class="space-y-3 max-h-96 overflow-y-auto p-4 bg-slate-50 rounded-xl border-2 border-slate-200"></div>
+                        <div class="flex gap-4 pt-4 border-t border-slate-200">
+                            <button onclick="saveTemplateAndApprove()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg">
+                                ✅ Approve & Generate Full Course
+                            </button>
+                            <button onclick="stepper.prev()" class="px-8 py-4 border border-slate-300 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-all">
+                                ← Back to Edit
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 3: Final Review & Download -->
+                <section id="step3" data-step="3" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hidden">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                        <i data-lucide="download-cloud" class="text-blue-600 w-8 h-8"></i>
+                        Review & Download
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-lg font-bold mb-4">📊 Course Stats</h3>
+                            <div id="course-stats" class="grid grid-cols-2 gap-6 text-center p-6 bg-slate-50 rounded-xl">
+                                <!-- Stats populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-bold mb-4">💾 Download Formats</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="downloadCourse('markdown')" class="p-6 border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl font-bold transition-all">
+                                    <i data-lucide="file-text" class="w-8 h-8 mx-auto mb-2 block"></i>
+                                    Markdown
+                                </button>
+                                <button onclick="downloadCourse('pdf')" class="p-6 border-2 border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl font-bold transition-all">
+                                    <i data-lucide="file-text" class="w-8 h-8 mx-auto mb-2 block"></i>
+                                    PDF
+                                </button>
+                                <button onclick="downloadCourse('html')" class="p-6 border-2 border-slate-200 hover:border-purple-400 hover:bg-purple-50 rounded-xl font-bold transition-all col-span-2">
+                                    <i data-lucide="globe" class="w-8 h-8 mx-auto mb-2 block"></i>
+                                    Full HTML Site
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-8 p-6 bg-emerald-50 border-2 border-emerald-200 rounded-2xl text-center">
+                        <i data-lucide="check-circle-2" class="w-16 h-16 text-emerald-600 mx-auto mb-4"></i>
+                        <h3 class="text-xl font-bold text-emerald-800 mb-2">Course Ready!</h3>
+                        <p class="text-emerald-700">Full content generated and validated.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Sidebar: Agent Console (collapsible mobile) -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i data-lucide="terminal" class="w-5 h-5"></i>
+                        Agent Console
+                    </h3>
+                    <button id="console-toggle" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="minimize-2" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <section id="agent-console" class="bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800 h-[500px] flex flex-col mobile-console">
+                    <div class="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700">
+                        <span class="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Live Agent Logs
+                        </span>
+                        <button id="clear-console" class="text-slate-500 hover:text-slate-300">
+                            <i data-lucide="trash-2" size="14"></i>
+                        </button>
+                    </div>
+                    <div id="console-output" class="p-4 overflow-y-auto flex-1 space-y-2 text-slate-300 text-sm">
+                        <div class="italic">Ready for course generation...</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Init after DOM + components loaded
+        document.addEventListener('DOMContentLoaded', initWorkflow);
+        window.addEventListener('load', () => {
+            if (window.sessionManager && window.stepper) {
+                window.stepper.goToStep(window.sessionManager.workflowStep);
+                updateStepIndicatorMobile();
+            }
+        });
+
+        async function initWorkflow() {
+            lucide.createIcons();
+            
+            // Init components
+            const stepperContainer = document.getElementById('stepper-container');
+            if (stepperContainer && window.Stepper) {
+                window.stepper = new Stepper('stepper-container');
+            }
+
+            // Health badges
+            await updateHealthBadges();
+            setInterval(updateHealthBadges, 20000);
+
+            // Event listeners
+            setupEventListeners();
+            setupFormValidation();
+        }
+
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobile-menu-btn')?.addEventListener('click', toggleMobileMenu);
+            
+            // Form submission
+            document.getElementById('course-create-form')?.addEventListener('submit', handleCourseCreate);
+            
+            // Level buttons
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectLevel(btn.dataset.level));
+            });
+
+            // Duration buttons
+            document.getElementById('dur-minus')?.addEventListener('click', () => changeDuration(-1));
+            document.getElementById('dur-plus')?.addEventListener('click', () => changeDuration(1));
+
+            // Console toggle
+            document.getElementById('console-toggle')?.addEventListener('click', toggleConsole);
+        }
+
+        // Form handlers (from test_interface integration)
+        let selectedLevel = 'beginner';
+        let durationMonths = 3;
+
+        function validateForm() {
+            const title = document.querySelector('input[name="title"]')?.value.trim() || '';
+            const btn = document.querySelector('.generate-btn');
+            const status = document.getElementById('title-status');
+            
+            const isValid = title.length >= 3;
+            status.textContent = isValid ? '✓ Ready to generate' : `Type ${3 - title.length} more characters`;
+            status.className = `text-sm ${isValid ? 'text-emerald-600' : 'text-amber-600'}`;
+            btn.disabled = !isValid;
+            return isValid;
+        }
+
+        function selectLevel(level) {
+            selectedLevel = level;
+            document.querySelectorAll('.level-btn').forEach(btn => btn.classList.remove('selected', 'level-beginner', 'level-intermediate', 'level-advanced'));
+            document.querySelector(`[data-level="${level}"]`).classList.add('selected', `level-${level}`);
+        }
+
+        function changeDuration(delta) {
+            durationMonths = Math.max(1, Math.min(12, durationMonths + delta));
+            document.getElementById('duration-display').textContent = `${durationMonths} month${durationMonths > 1 ? 's' : ''}`;
+        }
+
+        async function handleCourseCreate(e) {
+            e.preventDefault();
+            if (!validateForm()) return;
+
+            const formData = new FormData(e.target);
+            const payload = {
+                title: formData.get('title'),
+                level: selectedLevel,
+                duration_months: durationMonths
+            };
+
+            const btn = e.target.querySelector('.generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 mr-2 animate-spin inline"></i> Generating...';
+
+            try {
+                // Search existing first
+                await searchExistingCourses(payload.title);
+                
+                // Generate new
+                const data = await apiCall('/courses/generate/course-template', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                await window.sessionManager.saveToBackend(data.course_id);
+                window.stepper.next();
+                
+                // Start streaming logs
+                startAgentStream(data.course_id);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Generate Course Template';
+            }
+        }
+
+        async function searchExistingCourses(query) {
+            const data = await apiCall(`/courses/search-courses?q=${encodeURIComponent(query)}`);
+            const results = document.getElementById('course-search-results');
+            results.innerHTML = '';
+            
+            if (data.results?.length) {
+                data.results.slice(0, 4).forEach(course => {
+                    const card = document.createElement('div');
+                    card.className = 'p-4 border rounded-xl hover:shadow-md cursor-pointer bg-white';
+                    card.innerHTML = `
+                        <h4 class="font-bold text-lg mb-1">${course.title}</h4>
+                        <div class="flex gap-2 text-xs text-slate-500 mb-2">
+                            <span class="px-2 py-1 bg-slate-100 rounded-full">${course.level}</span>
+                            <span>${course.duration_months}mo</span>
+                        </div>
+                        <button onclick="useExistingCourse(${course.course_id})" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-bold hover:bg-blue-700">
+                            Use This Course
+                        </button>
+                    `;
+                    results.appendChild(card);
+                });
+                document.getElementById('existing-courses').classList.remove('hidden');
+            }
+        }
+
+        async function useExistingCourse(courseId) {
+            await window.sessionManager.saveToBackend(courseId);
+            window.location.reload();
+        }
+
+        function startAgentStream(courseId) {
+            const output = document.getElementById('console-output');
+            output.innerHTML = '<div class="text-emerald-400">Generation started for course ' + courseId + '</div>';
+            
+            const eventSource = new EventSource(`/courses/${courseId}/events`);
+            eventSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (data.type === 'log') {
+                    logToConsole(data.agent, data.message, data.level);
+                }
+            };
+        }
+
+        function logToConsole(agent, message, level) {
+            const output = document.getElementById('console-output');
+            const div = document.createElement('div');
+            div.className = `log-entry flex gap-2 ${level === 'error' ? 'text-red-400' : ''}`;
+            const time = new Date().toLocaleTimeString([], {hour12: false, hour: '2-digit', minute: '2-digit'});
+            div.innerHTML = `
+                <span class="text-slate-500">${time}</span>
+                <span class="font-bold text-blue-400">[${agent}]</span>
+                <span>${message}</span>
+            `;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function saveTemplateAndApprove() {
+            // Extract edited chapters
+            const chapters = Array.from(document.querySelectorAll('#chapters-editor input')).map(input => input.value);
+            
+            const data = await apiCall(`/courses/${window.sessionManager.courseId}/approve-full`, {
+                method: 'POST',
+                body: JSON.stringify({chapters})
+            });
+
+            window.stepper.next();
+            showNotification('Full course generation started!', 'success');
+        }
+
+        async function downloadCourse(format) {
+            const link = document.createElement('a');
+            const data = await apiCall(`/courses/${window.sessionManager.courseId}/download?format=${format}`);
+            link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/octet-stream'}));
+            link.download = `course-${window.sessionManager.courseId}.${format}`;
+            link.click();
+        }
+
+        // UI Helpers
+        function toggleMobileMenu() {
+            document.getElementById('mobile-drawer').classList.toggle('translate-x-0');
+        }
+
+        function toggleConsole() {
+            document.getElementById('agent-console').classList.toggle('hidden');
+        }
+
+        async function updateHealthBadges() {
+            const data = await apiCall('/health');
+            ['pg', 'neo', 'astra'].forEach(key => {
+                const badge = document.getElementById(`health-${key}`);
+                const status = data.dbs[key]?.status || 'down';
+                badge.dataset.status = status;
+                badge.className = `health-badge flex items-center gap-1.5 py-1 px-2 rounded-full text-xs font-medium shadow-sm ${
+                    status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                }`;
+            });
+        }
+
+        function updateStepIndicatorMobile() {
+            const step = window.sessionManager?.workflowStep || 1;
+            document.getElementById('step-indicator-mobile').textContent = `Step ${step} of 3`;
+        }
+
+        // Form validation on input
+        function setupFormValidation() {
+            const titleInput = document.querySelector('input[name="title"]');
+            if (titleInput) {
+                titleInput.addEventListener('input', validateForm);
+            }
+        }
+
+        // Global step change listener
+        window.addEventListener('step_changed', (e) => {
+            updateStepIndicatorMobile();
+            toggleNavButtons(e.detail.step);
+        });
+
+        function toggleNavButtons(step) {
+            const total = 3;
+            document.querySelectorAll('[data-step-prev]').forEach(btn => 
+                btn.classList.toggle('hidden', step === 1)
+            );
+            document.querySelectorAll('[data-step-next]').forEach(btn => 
+                btn.classList.toggle('hidden', step === total)
+            );
+        }
+    </script>
+</body>
+</html>
+

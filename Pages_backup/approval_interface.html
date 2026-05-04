@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Course Template Approval</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        /* Step Indicator Styles */
+        .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; gap: 10px; }
+        .step { display: flex; align-items: center; }
+        .step-number { 
+            width: 35px; height: 35px; 
+            border-radius: 50%; 
+            background: #e0e0e0; 
+            color: #666; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; margin-right: 8px;
+            transition: all 0.3s ease;
+        }
+        .step.active .step-number { background: #2196F3; color: white; }
+        .step.completed .step-number { background: #4CAF50; color: white; }
+        .step-label { font-size: 14px; color: #666; }
+        .step.active .step-label { color: #2196F3; font-weight: bold; }
+        .step.completed .step-label { color: #4CAF50; }
+        .step-connector { width: 50px; height: 2px; background: #e0e0e0; margin: 0 10px; }
+        .step.completed + .step-connector, .step-connector.completed { background: #4CAF50; }
+        
+        .chapter { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #007bff; }
+        .chapter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .chapter-title { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; font-weight: bold; margin-right: 10px; }
+        .chapter-topics { 
+            background: #e3f2fd; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            border-left: 4px solid #2196f3;
+        }
+        .chapter-topics h4 { margin: 0 0 8px 0; color: #1565c0; font-size: 14px; }
+        .topic-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .topic-tag { 
+            background: #2196f3; 
+            color: white; 
+            padding: 4px 10px; 
+            border-radius: 15px; 
+            font-size: 12px;
+        }
+        .scraping-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .real-data { background: #4caf50; color: white; }
+        .fallback-data { background: #ff9800; color: white; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2196f3; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .section { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; }
+        .section-title { font-weight: bold; font-size: 15px; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .btn-add { background: #4caf50; color: white; }
+        .btn-remove { background: #f44336; color: white; }
+        .btn-chapter { background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-back { background: #9e9e9e; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        .approve { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .reject { background: #f44336; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .item-list { list-style: none; padding: 0; margin: 8px 0; }
+        .item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+        .item input { flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px; }
+        .step-active { color: #1976d2; font-weight: bold; }
+        .step-completed { color: #4caf50; }
+        .step-pending { color: #999; }
+        /* Mobile polish */
+        @media (max-width: 768px) {
+            input, button { min-height: 48px !important; padding: 16px !important; font-size: 16px !important; }
+            .btn { padding: 12px 20px !important; min-height: 48px !important; }
+            .chapter-title { width: 100% !important; margin-bottom: 12px !important; }
+            .item input { min-height: 44px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="course-title">📋 Course Template Review</h1>
+
+        <div class="step-indicator">
+            <div class="step completed" id="step-ind-1">
+                <div class="step-number">1</div>
+                <div class="step-label">Create Course</div>
+            </div>
+            <div class="step-connector completed"></div>
+            <div class="step active" id="step-ind-2">
+                <div class="step-number">2</div>
+                <div class="step-label">Review Template</div>
+            </div>
+            <div class="step-connector" id="connector-2-3"></div>
+            <div class="step" id="step-ind-3">
+                <div class="step-number">3</div>
+                <div class="step-label">Generate Course</div>
+            </div>
+            <div class="step-connector" id="connector-3-4"></div>
+            <div class="step" id="step-ind-4">
+                <div class="step-number">4</div>
+                <div class="step-label">Download</div>
+            </div>
+        </div>
+
+        <div id="agent-console" class="bg-slate-900 rounded-2xl p-4 h-64 overflow-y-auto text-slate-200 text-sm mb-4" style="display: none;">
+            <div class="text-slate-500 italic">Loading template... (SSE ready)</div>
+        </div>
+        <div id="loading" style="text-align: center; padding: 40px;">
+            <div class="loading-spinner" style="width: 50px; height: 50px;"></div>
+            <p style="font-size: 18px; margin-top: 20px;">Loading course template...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <h1 id="course-header"></h1>
+            <div style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-chapter" onclick="toggleViewMode()">👁️ Toggle Preview</button>
+                <button class="btn-chapter" onclick="addChapter()">➕ Add Chapter</button>
+                <button class="approve" onclick="approveCourse()">✅ Approve & Generate</button>
+                <button class="reject" onclick="rejectCourse()">❌ Reject</button>
+            </div>
+            <div id="chapters"></div>
+        </div>
+
+        <div id="result" style="display: none; margin-top: 20px;"></div>
+    </div>
+
+<script src="components/toast-notifier.js" defer></script>
+    <script src="components/session-manager.js" defer></script>
+    <script src="components/live-logger.js" defer></script>
+    <script src="components/stepper.js" defer></script>
+    <script src="components/utils.js" defer></script>
+    <script>
+        // Wait for components
+        document.addEventListener('DOMContentLoaded', async () => {
+            await new Promise(r => setTimeout(r, 100)); // Ensure components loaded
+            
+            // State 
+            const params = new URLSearchParams(window.location.search);
+            const courseId = parseInt(params.get('course_id') || '0') || window.sessionManager.courseId;
+            
+            // Auto-init logger if console present
+            const consoleEl = document.getElementById('agent-console') || document.querySelector('#loading');
+            if (consoleEl && courseId) {
+                window.liveLogger.init(consoleEl);
+            }
+            
+            let courseData = null;
+            let scrapingResult = null;
+            let viewMode = 'edit';
+            let isLoading = false;
+            let retryCount = 0;
+            const MAX_RETRIES = 3;
+            const RETRY_DELAYS = [500, 1000, 2000];
+
+            function updateStepIndicator(activeStep) {
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step-ind-${i}`);
+                if (!el) continue;
+                el.className = 'step' + (i < activeStep ? ' completed' : i === activeStep ? ' active' : '');
+            }
+        }
+
+        function toggleViewMode() {
+            viewMode = viewMode === 'edit' ? 'preview' : 'edit';
+            renderChapters();
+        }
+
+        function renderCurrentView() {
+            const chaptersDiv = document.getElementById('chapters');
+            if (!chaptersDiv || !courseData) return;
+            chaptersDiv.innerHTML = '';
+            courseData.chapters.forEach((ch, i) => {
+                const div = document.createElement('div');
+                div.className = 'chapter';
+                const title = document.createElement('strong');
+                title.textContent = `${i + 1}. ${ch.title}`;
+                const desc = document.createElement('p');
+                desc.textContent = ch.description || '';
+                div.append(title, desc);
+                chaptersDiv.appendChild(div);
+            });
+        }
+
+        async function loadCourseData() {
+            if (isLoading) return;
+            if (!courseId) {
+                window.liveLogger?.logSystem('No course ID - create new workflow', 'warning');
+                showErrorTemplate('No course ID found. Use dashboard to start.');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                return;
+            }
+            isLoading = true;
+            
+            window.liveLogger?.logSystem(`Loading course ${courseId} template via SSE`, 'info');
+            document.getElementById('agent-console').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            
+            try {
+                const response = await apiCall(`/courses/${courseId}/course-review`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                courseData = data.template;
+                scrapingResult = data.scraping_result;
+                window.liveLogger?.logSystem('Template loaded successfully', 'success');
+                displayCourseTemplate(data.metadata?.status || 'pending');
+            } catch (error) {
+                window.liveLogger?.logSystem(`Load failed: ${error.message}`, 'error');
+                retryCount++;
+                if (retryCount < MAX_RETRIES) {
+                    const delay = RETRY_DELAYS[retryCount - 1];
+                    window.liveLogger?.logSystem(`Retrying in ${delay/1000}s... (${retryCount}/${MAX_RETRIES})`, 'warning');
+                    retryTimeout = setTimeout(loadCourseData, delay);
+                } else {
+                    document.getElementById('content').style.display = 'block';
+                    showErrorTemplate(error.message);
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!courseId) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                showErrorTemplate('No course ID provided. Please go back and create a course.');
+                return;
+            }
+            loadCourseData();
+        });
+
+        function updateLoadingUI(message, progress, retryInfo) {
+            const loadingDiv = document.getElementById('loading');
+            const safeMessage = document.createElement('p');
+            safeMessage.style.cssText = 'font-size: 18px; margin: 20px 0 10px 0;';
+            safeMessage.textContent = message;
+            const retryEl = document.createElement('p');
+            if (retryInfo) {
+                retryEl.style.cssText = 'color: #ff9800; font-size: 14px;';
+                retryEl.textContent = retryInfo;
+            }
+            loadingDiv.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'text-align: center; padding: 30px;';
+            wrapper.innerHTML = `<div class="loading-spinner" style="width: 40px; height: 40px; border-width: 4px;"></div>`;
+            wrapper.appendChild(safeMessage);
+            wrapper.innerHTML += `<div style="width: 80%; max-width: 300px; margin: 15px auto; background: #f0f0f0; border-radius: 10px; overflow: hidden;"><div style="width: ${progress}%; height: 8px; background: linear-gradient(90deg, #4caf50, #2196f3); transition: width 0.5s;"></div></div>`;
+            if (retryInfo) wrapper.appendChild(retryEl);
+            loadingDiv.appendChild(wrapper);
+        }
+
+        // removed fetchFromAPIWithRetry for clean polling behavior
+async function fetchWithTimeout(url, timeoutMs = 10000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                const response = res;
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        }
+        
+        function cancelRetry() {
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+                retryTimeout = null;
+            }
+        }
+        
+        // Cancel retry when leaving page
+        window.addEventListener('beforeunload', cancelRetry);
+        
+        function showFallbackTemplate() {
+            // Try to get saved template data from localStorage first
+            const savedTemplate = localStorage.getItem('course_template');
+            const savedScrapingResult = localStorage.getItem('scraping_result');
+            
+            if (savedTemplate) {
+                try {
+                    courseData = JSON.parse(savedTemplate);
+                } catch (e) {
+                    console.error('Failed to parse saved template:', e);
+                    courseData = null;
+                }
+            }
+            
+            if (savedScrapingResult) {
+                try {
+                    scrapingResult = JSON.parse(savedScrapingResult);
+                } catch (e) {
+                    console.error('Failed to parse saved scraping result:', e);
+                    scrapingResult = null;
+                }
+            }
+            
+            // If no saved data, use defaults
+            if (!courseData) {
+                courseData = {
+                    title: localStorage.getItem('course_topic') || 'Your Course',
+                    level: localStorage.getItem('course_level') || 'Beginner',
+                    duration_months: parseInt(localStorage.getItem('course_duration') || '3'),
+                    chapters: [
+                        {
+                            title: 'Chapter 1: Introduction',
+                            description: 'Getting started with your course topic',
+                            units: ['Unit 1: Overview', 'Unit 2: Key Concepts', 'Unit 3: Fundamentals'],
+                            labs: ['Lab 1: Setup Environment'],
+                            exercises: ['Exercise 1: Practice Problem']
+                        },
+                        {
+                            title: 'Chapter 2: Core Concepts',
+                            description: 'Understanding the main topics',
+                            units: ['Unit 1: Topic A', 'Unit 2: Topic B', 'Unit 3: Topic C'],
+                            labs: ['Lab 2: Hands-on Practice'],
+                            exercises: ['Exercise 2: Coding Challenge']
+                        },
+                        {
+                            title: 'Chapter 3: Advanced Topics',
+                            description: 'Building on the fundamentals',
+                            units: ['Unit 1: Advanced Topic 1', 'Unit 2: Advanced Topic 2'],
+                            labs: ['Lab 3: Final Project'],
+                            exercises: ['Exercise 3: Capstone Exercise']
+                        }
+                    ],
+                    learning_objectives: [
+                        'Understand core concepts',
+                        'Build practical applications',
+                        'Master problem-solving techniques'
+                    ],
+                    prerequisites: ['Basic computer literacy', 'Willingness to learn']
+                };
+            }
+            
+            if (!scrapingResult) {
+                scrapingResult = {
+                    is_real_data: false,
+                    total_sources: 0,
+                    quality_score: 70,
+                    total_content: 'Template-based (API unavailable)',
+                    sources: []
+                };
+            }
+            
+            // Display the template
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            document.querySelector('h1').innerHTML = `
+                📋 ${courseData.title} - ${courseData.level} (${courseData.duration_months} months / ${courseData.duration_months * 4} weeks)
+                <div style="margin-top: 8px;">
+                    <span class="scraping-badge fallback-data">⚠ Template Mode (API unavailable)</span>
+                </div>
+                <div style="font-size: 12px; color: #2196f3; margin-top: 5px; padding: 5px; background: #e3f2fd; border-radius: 4px;">
+                    ⚠️ Backend API unavailable. Showing saved/template data.
+                </div>
+            `;
+            
+            renderChapters();
+        }
+        
+        function showErrorTemplate(errorMessage) {
+            // Show error state with options
+            document.querySelector('h1').innerHTML = `
+                <p>⚠️ Unable to Load Course Template</p>
+                <p style="font-size: 14px; color: #666;">Error: ${errorMessage || 'Connection failed'}</p>
+            `;
+            
+            document.getElementById('content').innerHTML = `
+                <div style="text-align: center; padding: 30px; background: #f8f9fa; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #e65100; margin-bottom: 20px;">Connection Issue</h3>
+                    <p style="color: #666; margin-bottom: 20px;">Could not load course data from the server.</p>
+                    
+                    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="loadCourseData()" style="background: #2196f3; color: white; padding: 12px 25px; border-radius: 6px;">
+                            🔄 Retry Connection
+                        </button>
+                        <button onclick="showFallbackTemplate()" style="background: #4caf50; color: white; padding: 12px 25px; border-radius: 6px;">
+                            📖 Load Saved Template
+                        </button>
+                        <a href="/pages/test_interface.html">
+                            <button style="background: #ff9800; color: white; padding: 12px 25px; border-radius: 6px;">
+                                🚀 Create New Course
+                            </button>
+                        </a>
+                    </div>
+                    
+                    <p style="color: #999; font-size: 12px; margin-top: 20px;">
+                        Make sure the backend server is running on port 8000
+                    </p>
+                </div>
+            `;
+        }
+        
+        // ✅ SSE handles content updates - no polling needed
+        window.liveLogger.connect(); // Ensure SSE active
+        
+        function showContentReadyNotification() {
+            const notification = document.createElement('div');
+            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px 25px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;';
+            notification.innerHTML = '🎉 <strong>Full Content Ready!</strong> <br><span style="font-size: 12px;">Refresh to see detailed content for all chapters.</span>';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+            
+            // Add animations
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+                @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+            `;
+            document.head.appendChild(style);
+        }
+
+
+        function displayCourseTemplate(contentStatus = 'pending') {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Show course info with data quality badge
+            const dataQualityBadge = scrapingResult && scrapingResult.is_real_data 
+                ? '<span class="scraping-badge real-data">✓ Real Scraped Data</span>'
+                : '<span class="scraping-badge fallback-data">⚠ Template-Based</span>';
+            
+            const totalWords = scrapingResult && scrapingResult.total_content 
+                ? ` | ${scrapingResult.total_content}` 
+                : '';
+            
+            // Calculate total weeks
+            const totalWeeks = courseData.duration_months * 4;
+            
+            // Content generation status badge
+            let contentStatusBadge = '';
+            if (contentStatus === 'completed') {
+                contentStatusBadge = '<span class="scraping-badge real-data">✓ Full Content Ready</span>';
+            } else {
+                contentStatusBadge = '<span class="scraping-badge fallback-data" style="background: #2196f3;">⏳ Generating Content...</span>';
+            }
+            
+            // Count total items for summary
+            const totalUnits = courseData.chapters.reduce((sum, ch) => sum + (ch.units?.length || 0), 0);
+            const totalLabs = courseData.chapters.reduce((sum, ch) => sum + (ch.labs?.length || 0), 0);
+            const totalExercises = courseData.chapters.reduce((sum, ch) => sum + (ch.exercises?.length || 0), 0);
+            
+            document.querySelector('h1').innerHTML = `
+                📋 ${courseData.title} - ${courseData.level} (${courseData.duration_months} months / ${totalWeeks} weeks)
+                <div style="margin-top: 8px;">
+                    ${dataQualityBadge}
+                    ${contentStatusBadge}
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                    ${scrapingResult ? `Sources: ${scrapingResult.total_sources || 'Multiple'} | Quality Score: ${scrapingResult.quality_score || '85'}/100${totalWords}` : 'Generating...'}
+                </div>
+                ${contentStatus !== 'completed' ? `
+                    <div style="font-size: 11px; color: #2196f3; margin-top: 5px; padding: 5px; background: #e3f2fd; border-radius: 4px;">
+                        📡 Full content is being generated in background. You'll be notified when ready.
+                        <br><a href="#" onclick="location.reload(); return false;" style="color: #1976d2;">Click to refresh</a>
+                    </div>
+                ` : ''}
+            `;
+            // Insert summary + metadata once to avoid multiple DOM passes
+            ['course-summary', 'research-sources', 'learning-objectives', 'prerequisites'].forEach(id => {
+                const existing = document.getElementById(id);
+                if (existing) existing.remove();
+            });
+
+            const chaptersHtml = courseData.chapters.map((ch, i) => {
+                const units = (ch.units || []).map(u => `<span style="background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin:2px; display:inline-block;">${u}</span>`).join(' ') || '<span style="opacity:0.7;">No units defined</span>';
+                const labs = (ch.labs || []).map(l => `<span style="background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin:2px; display:inline-block;">${l}</span>`).join(' ') || '<span style="opacity:0.7;">No labs defined</span>';
+                const exercises = (ch.exercises || []).map(e => `<span style="background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin:2px; display:inline-block;">${e}</span>`).join(' ') || '<span style="opacity:0.7;">No exercises defined</span>';
+                return `
+                    <div style="background: rgba(0,0,0,0.03); padding: 12px; margin: 8px 0; border-radius: 8px;">
+                        <strong>${i + 1}. ${ch.title}</strong><br>
+                        <small>${ch.description || 'No description provided'}</small>
+                        <div style="margin-top: 8px;"><strong>Units:</strong> ${units}</div>
+                        <div style="margin-top: 6px;"><strong>Labs:</strong> ${labs}</div>
+                        <div style="margin-top: 6px;"><strong>Exercises:</strong> ${exercises}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const summarySection = document.createElement('div');
+            summarySection.id = 'course-summary';
+            summarySection.className = 'section';
+            summarySection.innerHTML = `
+                <div class="section-header">
+                    <span class="section-title">📊 Overview & Structure</span>
+                    <span style="background: #1976d2; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">
+                        ${courseData.chapters.length} Chapters | ${totalUnits} Units | ${totalLabs} Labs | ${totalExercises} Exercises
+                    </span>
+                </div>
+                <div style="margin-top: 12px;">${chaptersHtml}</div>
+            `;
+
+            // Research sources block
+            let sourceDetails = '';
+            if (scrapingResult && Array.isArray(scrapingResult.sources)) {
+                sourceDetails = scrapingResult.sources.map((src, i) => `
+                    <div style="border-left: 3px solid #3498db; background: #f4f8fc; padding: 8px; margin: 8px 0; border-radius: 6px;">
+                        <strong>${i + 1}. ${src.title || 'Source'}</strong><br>
+                        <a href="${src.url || '#'}" target="_blank" style="font-size: 12px; color: #1976d2;">${src.url || 'No URL'}</a>
+                    </div>
+                `).join('');
+            }
+
+            const researchSection = document.createElement('div');
+            researchSection.id = 'research-sources';
+            researchSection.className = 'section';
+            researchSection.innerHTML = `
+                <div class="section-header">
+                    <span class="section-title">🔍 Research & Sources</span>
+                </div>
+                <div style="margin-top: 8px;">${sourceDetails || '<em>No research sources available.</em>'}</div>
+            `;
+
+            const objectivesSection = document.createElement('div');
+            objectivesSection.id = 'learning-objectives';
+            objectivesSection.className = 'section';
+            objectivesSection.innerHTML = `
+                <div class="section-header">
+                    <span class="section-title">🎯 Learning Objectives</span>
+                </div>
+                <ul style="margin: 10px 0 0 16px; padding: 0;">
+                    ${(courseData.learning_objectives || []).map(obj => `<li style="margin-bottom: 6px;">${obj}</li>`).join('') || '<li><em>No objectives set.</em></li>'}
+                </ul>
+            `;
+
+            const prereqSection = document.createElement('div');
+            prereqSection.id = 'prerequisites';
+            prereqSection.className = 'section';
+            prereqSection.innerHTML = `
+                <div class="section-header">
+                    <span class="section-title">📝 Prerequisites</span>
+                </div>
+                <ul style="margin: 10px 0 0 16px; padding: 0;">
+                    ${(courseData.prerequisites || []).map(req => `<li style="margin-bottom: 6px;">${req}</li>`).join('') || '<li><em>No prerequisites set.</em></li>'}
+                </ul>
+            `;
+
+            const chaptersDiv = document.getElementById('chapters');
+            if (chaptersDiv) {
+                chaptersDiv.parentNode.insertBefore(summarySection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(researchSection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(objectivesSection, chaptersDiv);
+                chaptersDiv.parentNode.insertBefore(prereqSection, chaptersDiv);
+            }
+
+            renderChapters();
+        }
+
+                // Old render helper functions removed; now in displayCourseTemplate.
+function renderChapters() {
+            if (viewMode === 'preview') {
+                renderCurrentView();
+                return;
+            }
+            const chaptersHtml = courseData.chapters.map((chapter, chapterIndex) => {
+                // Use actual chapter-provided topics; fallback to units/labs if available
+                let topics = Array.isArray(chapter.topics) && chapter.topics.length ? chapter.topics : [];
+                if (!topics.length) {
+                    topics = [ ...(chapter.units || []).slice(0, 3), ...(chapter.labs || []).slice(0, 2) ];
+                }
+                if (!topics.length) {
+                    topics = ['No explicit topics defined'];
+                }
+                
+                // Create topics HTML
+                const topicsHtml = topics.map(topic => 
+                    `<span class="topic-tag">${topic}</span>`
+                ).join('');
+                
+                // Chapter number badge
+                const chapterNum = chapterIndex + 1;
+                
+                return `
+                <div class="chapter">
+                    <div class="chapter-header">
+                        <div style="flex: 1;">
+                            <span style="background: #2196f3; color: white; padding: 4px 10px; border-radius: 15px; font-size: 12px; margin-right: 10px;">
+                                Chapter ${chapterNum}
+                            </span>
+                            <input type="text" class="chapter-title" value="${chapter.title}" onchange="updateChapterTitle(${chapterIndex}, this.value)" style="display: inline-block; width: 70%;">
+                        </div>
+                        <button class="btn btn-remove" onclick="removeChapter(${chapterIndex})">🗑️ Remove</button>
+                    </div>
+                    
+                    <!-- Topics Covered Section -->
+                    <div class="chapter-topics">
+                        <h4>📚 Topics Covered in This Chapter:</h4>
+                        <div class="topic-tags">
+                            ${topicsHtml}
+                        </div>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; margin: 10px 0;">
+                        ${chapter.description || ''}
+                    </p>
+                    
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="section-title">📖 Units (${(chapter.units || []).length})</span>
+                            <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'units')">➕ Add</button>
+                        </div>
+                        <ul class="item-list">
+                            ${(chapter.units || []).map((unit, unitIndex) => `
+                                <li class="item">
+                                    <input type="text" value="${unit}" onchange="updateItem(${chapterIndex}, 'units', ${unitIndex}, this.value)">
+                                    <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'units', ${unitIndex})">🗑️</button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="section-title">🧪 Labs (${(chapter.labs || []).length})</span>
+                            <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'labs')">➕ Add</button>
+                        </div>
+                        <ul class="item-list">
+                            ${(chapter.labs || []).map((lab, labIndex) => `
+                                <li class="item">
+                                    <input type="text" value="${lab}" onchange="updateItem(${chapterIndex}, 'labs', ${labIndex}, this.value)">
+                                    <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'labs', ${labIndex})">🗑️</button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="section-title">💪 Exercises (${(chapter.exercises || []).length})</span>
+                            <button class="btn btn-add" onclick="addItem(${chapterIndex}, 'exercises')">➕ Add</button>
+                        </div>
+                        <ul class="item-list">
+                            ${(chapter.exercises || []).map((exercise, exerciseIndex) => `
+                                <li class="item">
+                                    <input type="text" value="${exercise}" onchange="updateItem(${chapterIndex}, 'exercises', ${exerciseIndex}, this.value)">
+                                    <button class="btn btn-remove" onclick="removeItem(${chapterIndex}, 'exercises', ${exerciseIndex})">🗑️</button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('chapters').innerHTML = chaptersHtml;
+        }
+
+        function updateChapterTitle(chapterIndex, newTitle) {
+            courseData.chapters[chapterIndex].title = newTitle;
+        }
+        
+        function addChapter() {
+            const newChapter = {
+                title: `Chapter ${courseData.chapters.length + 1}: New Chapter`,
+                description: "New chapter description",
+                units: ['New Unit 1'],
+                labs: ['New Lab 1'],
+                exercises: ['New Exercise 1']
+            };
+            courseData.chapters.push(newChapter);
+            renderChapters();
+        }
+        
+        function removeChapter(chapterIndex) {
+            if (confirm('Remove this chapter?')) {
+                courseData.chapters.splice(chapterIndex, 1);
+                renderChapters();
+            }
+        }
+        
+        function addItem(chapterIndex, section) {
+            const newItem = `New ${section.slice(0, -1)} ${courseData.chapters[chapterIndex][section].length + 1}`;
+            courseData.chapters[chapterIndex][section].push(newItem);
+            renderChapters();
+        }
+        
+        function removeItem(chapterIndex, section, itemIndex) {
+            courseData.chapters[chapterIndex][section].splice(itemIndex, 1);
+            renderChapters();
+        }
+        
+        function updateItem(chapterIndex, section, itemIndex, newValue) {
+            courseData.chapters[chapterIndex][section][itemIndex] = newValue;
+        }
+
+        function rejectCourse() {
+            const reason = prompt('Reason for rejection:');
+            if (reason) {
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result').innerHTML = `<p>❌ Rejected: ${reason}</p>`;
+            }
+        }
+
+        function goBackToStep1() {
+            if (confirm('Go back to Step 1? You can generate a new course.')) {
+                // Clear secure session
+                apiCall('/session/clear', {method: 'POST'}).catch(e => toastNotifier.show('Session clear failed', 'warning'));
+                window.location.href = '/pages/test_interface.html';
+            }
+        }
+
+        async function approveCourse() {
+            window.liveLogger?.logSystem('User approved template - starting full generation...', 'info');
+            window.sessionManager.saveToBackend(courseId);
+            updateStepIndicator(3);
+            
+            // SSE handles all progress - logger shows live updates
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold flex items-center gap-2 mb-4">
+                        <i data-lucide="rocket" class="text-emerald-600 w-6 h-6"></i>
+                        Full Course Generation Started ✅
+                    </h3>
+                    <p class="text-emerald-800 mb-4">Live updates streaming below. Check agent console for progress.</p>
+                    <div class="flex gap-3">
+                        <a href="/pages/course_review_interface.html?course_id=${courseId}" 
+                           class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-700">
+                            📖 View Generated Course
+                        </a>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            
+            // Trigger backend approval
+            try {
+                const res = await apiCall(`/courses/${courseId}/approve-full`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(courseData.chapters)
+                });
+                if (!res.ok) throw new Error('Approval trigger failed');
+                window.liveLogger?.logSystem('Backend triggered - streaming live...', 'success');
+            } catch (e) {
+                window.liveLogger?.logSystem(`Approve error: ${e.message}`, 'error');
+            }
+        }
+            
+            // Start timer update
+            const timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `⏱️ ${minutes}:${seconds}`;
+            }, 1000);
+            let messageInterval = null;
+            
+            const updateProgress = (step, message, progress) => {
+                const fill = document.getElementById('progress-fill');
+                if (fill) {
+                    fill.style.width = `${progress}%`;
+                }
+
+                for (let i = 1; i <= 5; i++) {
+                    const stepEl = document.getElementById(`step${i}`);
+                    if (!stepEl) continue;
+                    if (i < step) {
+                        stepEl.className = 'step-completed';
+                        stepEl.innerText = stepEl.innerText.replace(/⏳|⚙️/, '✅');
+                    } else if (i === step) {
+                        stepEl.className = 'step-active';
+                        stepEl.innerText = stepEl.innerText.replace(/⏳|✅/, '⚙️');
+                    } else {
+                        stepEl.className = 'step-pending';
+                    }
+                }
+
+                const liveProgress = document.getElementById('live-progress');
+                if (liveProgress) {
+                    liveProgress.textContent = message;
+                }
+            };
+            
+            try {
+                // Update progress
+                document.getElementById('live-progress').innerHTML = 'Sending approval request to server...';
+                
+                const response = await fetch(`/courses/${courseId}/approve`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        approved: true,
+                        modifications: {
+                            title: courseData.title,
+                            level: courseData.level,
+                            duration_months: courseData.duration_months,
+                            new_chapters: courseData.chapters
+                        }
+                    })
+                });
+                
+                document.getElementById('live-progress').innerHTML = 'Processing server response...';
+                
+                // IMPROVED: Handle HTTP errors gracefully
+                if (!response.ok) {
+                    clearInterval(timerInterval);
+                    if (messageInterval) clearInterval(messageInterval);
+                    
+                    // Try to extract error message from response
+                    let errorMessage = `HTTP Error: ${response.status} ${response.statusText}`;
+                    let errorSuggestion = 'The server encountered an issue processing your request.';
+                    
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || errorData.message || errorMessage;
+                        errorSuggestion = errorData.suggestion || errorSuggestion;
+                    } catch (e) {
+                        // Response wasn't JSON - try to get text
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 200) {
+                                errorMessage = text;
+                            }
+                        } catch (textErr) {
+                            // Ignore text parsing errors
+                        }
+                    }
+                    
+                    // Log error for debugging
+                    console.error('HTTP Error during course approval:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        url: response.url,
+                        message: errorMessage
+                    });
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #ffebee; padding: 20px; border-radius: 8px; border-left: 4px solid #f44336;">
+                            <h3>❌ Server Error</h3>
+                            <p><strong>Error:</strong> ${errorMessage}</p>
+                            <p><strong>Suggestion:</strong> ${errorSuggestion}</p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="approveCourse()" class="approve" style="margin-right: 10px;">🔄 Retry</button>
+                                <button onclick="goBackToStep1()" class="reject" style="margin-right: 10px;">← Back to Edit</button>
+                                <a href="mailto:support@example.com?subject=Course Generation Error&body=Course ID: ${courseId}%0D%0BError: ${encodeURIComponent(errorMessage)}" 
+                                   style="color: #666; font-size: 13px; text-decoration: none;">
+                                    📧 Contact Support
+                                </a>
+                            </div>
+                            <p style="font-size: 11px; color: #999; margin-top: 10px;">
+                                Error occurred at: ${new Date().toISOString()}
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Parse response as JSON
+                const result = await response.json();
+                
+                // Clear timers
+                clearInterval(timerInterval);
+                if (messageInterval) clearInterval(messageInterval);
+                
+                // IMPROVED: Handle all possible status values
+                if (result.status === 'completed') {
+                    // Show success with detailed information
+                    let scrapingInfo = '';
+                    if (result.scraping_info) {
+                        scrapingInfo = `
+                            <div style="background: #e8f5e8; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #4caf50;">
+                                <h4>🌐 Deep Scraping Results:</h4>
+                                <p><strong>Sources Scraped:</strong> ${result.scraping_info.total_sources || 'Multiple'}</p>
+                                <p><strong>Content Pieces:</strong> ${result.scraping_info.total_content || 'Comprehensive'}</p>
+                                <p><strong>Quality Score:</strong> ${result.scraping_info.quality_score || 'High'}/100</p>
+                                <p><strong>Scraping Method:</strong> ${result.scraping_info.method || 'Advanced Web Scraping'}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    let previewHtml = '';
+                    if (result.preview_content) {
+                        previewHtml = `
+                            <div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                                <h4>📚 Generated Content Preview:</h4>
+                                <p><strong>Chapters Generated:</strong> ${result.preview_content.chapters_generated}</p>
+                                <p><strong>Sample Chapter:</strong> ${result.preview_content.sample_chapter || 'Multiple chapters'}</p>
+                                <div style="background: white; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                                    <strong>Content Sample:</strong><br>
+                                    ${result.preview_content.sample_content || 'Comprehensive course content generated'}
+                                </div>
+                                <div style="background: white; padding: 10px; margin-top: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                                    <strong>Course Structure Preview:</strong><br>
+                                    ${result.preview_content.final_markdown_preview || 'Full course structure created'}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Save course_id to localStorage for workflow continuity
+                    // Save to secure session (already set earlier)
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <h3>🎉 Full Course Generated Successfully!</h3>
+                            <p><strong>Course ID:</strong> ${result.course_id}</p>
+                            <p><strong>Status:</strong> Ready for review and download</p>
+                            ${scrapingInfo}
+                            ${previewHtml}
+                            <div style="margin-top: 20px; text-align: center;">
+                                <div style="margin-bottom: 15px; font-size: 16px; color: #2e7d32;">
+                                    ✅ <strong>Generation completed in ${Math.floor((Date.now() - startTime) / 1000)} seconds!</strong>
+                                </div>
+                                <a href="/pages/course_review_interface.html?course_id=${result.course_id}">
+                                    <button class="approve" style="padding: 15px 30px; font-size: 16px; animation: bounce 1s infinite;">📖 View & Download Full Course →</button>
+                                </a>
+                            </div>
+                            <style>
+                                @keyframes bounce {
+                                    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                                    40% { transform: translateY(-10px); }
+                                    60% { transform: translateY(-5px); }
+                                }
+                            </style>
+                        </div>
+                    `;
+                } 
+                else if (result.status === 'rejected') {
+                    // Handle rejected status
+                    clearInterval(timerInterval);
+                    if (messageInterval) clearInterval(messageInterval);
+                    
+                    const rejectionReason = result.message || 'The course template was rejected.';
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; border-left: 4px solid #ff9800;">
+                            <h3>⚠️ Course Rejected</h3>
+                            <p><strong>Reason:</strong> ${rejectionReason}</p>
+                            <p><strong>Timestamp:</strong> ${result.approval_timestamp || new Date().toISOString()}</p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="goBackToStep1()" class="btn-chapter" style="margin-right: 10px;">
+                                    ← Back to Edit Template
+                                </button>
+                                <button onclick="approveCourse()" class="approve">
+                                    🔄 Try Again
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                else if (result.status === 'error') {
+                    clearInterval(timerInterval);
+                    if (messageInterval) clearInterval(messageInterval);
+                    
+                    // IMPROVED: Safe error message handling for objects
+                    const safeErrorMsg = (typeof result.message === 'string') ? result.message
+                        : (result.message && typeof result.message === 'object') ? result.message.message || JSON.stringify(result.message)
+                        : JSON.stringify(result.message || 'Unknown error');
+
+                    const safeSuggestion = (typeof result.suggestion === 'string') ? result.suggestion
+                        : (result.suggestion && typeof result.suggestion === 'object') ? JSON.stringify(result.suggestion)
+                        : '';
+
+                    // Log error for debugging
+                    console.error('Course generation error:', {
+                        courseId: courseId,
+                        message: safeErrorMsg,
+                        suggestion: safeSuggestion,
+                        result: result
+                    });
+
+                    resultDiv.innerHTML = `
+                        <div style="background: #ffebee; padding: 20px; border-radius: 8px; border-left: 4px solid #f44336;">
+                            <h3>❌ Course Generation Failed</h3>
+                            <p><strong>Error:</strong> ${safeErrorMsg}</p>
+                            <p><strong>Suggestion:</strong> ${safeSuggestion || 'Please try again or contact support'}</p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="approveCourse()" class="approve" style="margin-right: 10px;">🔄 Retry Generation</button>
+                                <button onclick="goBackToStep1()" class="reject" style="margin-right: 10px;">← Back to Edit</button>
+                                <a href="mailto:support@example.com?subject=Course Generation Failed&body=Course ID: ${courseId}%0D%0BError: ${encodeURIComponent(safeErrorMsg)}" 
+                                   style="color: #666; font-size: 13px; text-decoration: none;">
+                                    📧 Contact Support
+                                </a>
+                            </div>
+                            <p style="font-size: 11px; color: #999; margin-top: 10px;">
+                                Error occurred at: ${new Date().toISOString()}
+                            </p>
+                        </div>
+                    `;
+                }
+                else if (['pending', 'processing', 'running', 'initiated', 'ready'].includes(result.status)) {
+                    clearInterval(timerInterval);
+                    updateProgress(2, `Status: ${result.status} - ${result.message || 'Processing...'}`, 30);
+                    pollForContentUpdates();
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border-left: 4px solid #2196f3;">
+                            <h3>⏳ Course Generation in Progress</h3>
+                            <p><strong>Status:</strong> ${result.status}</p>
+                            <p><strong>Message:</strong> ${result.message || 'Your course is being generated...'}</p>
+                            <p style="color: #666; font-size: 13px; margin-top: 10px;">
+                                This may take a few minutes. You can wait here or come back later.
+                            </p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="location.reload()" class="btn-chapter" style="margin-right: 10px;">
+                                    🔄 Check Status
+                                </button>
+                                <button onclick="goBackToStep1()" class="btn-back">
+                                    ← Back to Dashboard
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                else {
+                    // Unknown status - show generic error with options
+                    clearInterval(timerInterval);
+                    clearInterval(messageInterval);
+                    
+                    const unknownStatus = result.status || 'unknown';
+                    const unknownMessage = result.message || 'No details available';
+                    
+                    console.warn('Unknown course approval status:', {
+                        status: unknownStatus,
+                        message: unknownMessage,
+                        result: result
+                    });
+
+                    resultDiv.innerHTML = `
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; border-left: 4px solid #ff9800;">
+                            <h3>⚠️ Unexpected Status: ${unknownStatus}</h3>
+                            <p><strong>Message:</strong> ${unknownMessage}</p>
+                            <p>Please try again or contact support if this persists.</p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="approveCourse()" class="approve" style="margin-right: 10px;">🔄 Retry</button>
+                                <button onclick="goBackToStep1()" class="reject">← Back to Edit</button>
+                            </div>
+                            <p style="font-size: 11px; color: #999; margin-top: 10px;">
+                                Status: ${unknownStatus} | Timestamp: ${new Date().toISOString()}
+                            </p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                clearInterval(timerInterval);
+                if (messageInterval) clearInterval(messageInterval);
+                
+                // IMPROVED: Enhanced error logging
+                console.error('Course approval error:', {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack,
+                    courseId: courseId
+                });
+                
+                // Handle network errors vs other errors
+                const isNetworkError = !navigator.onLine || error.name === 'TypeError' || error.message.includes('fetch');
+                const errorTitle = isNetworkError ? '🌐 Network Error' : '❌ Connection Error';
+                const errorMsg = isNetworkError 
+                    ? 'Unable to connect to the server. Please check your internet connection and try again.'
+                    : error.message;
+                const suggestion = isNetworkError 
+                    ? 'Make sure you have a stable internet connection and the server is running.'
+                    : 'Please check your connection and try again.';
+
+                resultDiv.innerHTML = `
+                    <div style="background: #ffebee; padding: 20px; border-radius: 8px; border-left: 4px solid #f44336;">
+                        <h3>${errorTitle}</h3>
+                        <p><strong>Error:</strong> ${errorMsg}</p>
+                        <p><strong>Suggestion:</strong> ${suggestion}</p>
+                        <div style="margin-top: 15px;">
+                            <button onclick="approveCourse()" class="approve" style="margin-right: 10px;">🔄 Retry</button>
+                            <button onclick="goBackToStep1()" class="reject" style="margin-right: 10px;">← Back to Edit</button>
+                            <a href="mailto:support@example.com?subject=Course Generation Connection Error&body=Course ID: ${courseId}%0D%0BError: ${encodeURIComponent(error.message)}" 
+                               style="color: #666; font-size: 13px; text-decoration: none;">
+                                📧 Contact Support
+                            </a>
+                        </div>
+                        <p style="font-size: 11px; color: #999; margin-top: 10px;">
+                            Error occurred at: ${new Date().toISOString()}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

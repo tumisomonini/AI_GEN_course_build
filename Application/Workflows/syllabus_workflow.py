@@ -25,9 +25,13 @@ class OutlineState(Dict[str, Any]):  # Keep simple dict for cheap outline
     scraped_syllabi: List[Any]
     template: Dict[str, Any]
 
-def scrape_node(state: SyllabusState) -> SyllabusState:
-    """Enhanced scraping with upsert to Astra"""
-    from Application.API.dependencies import _postgres_repo as repo_logger
+async def scrape_node(state: SyllabusState) -> SyllabusState:
+    """Enhanced scraping with upsert to Astra + TripleDB logging"""
+    from Application.API.dependencies import get_triple_db_manager
+    repo_logger = get_triple_db_manager().pg
+    
+    scrape_start = time.time()
+    
     # Skip if topics already exist (e.g. resuming from approved template)
     if state.topics and len(state.topics) > 0:
         return state
@@ -38,7 +42,7 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
     print(msg)
     if repo_logger and run_id > 0: repo_logger.log_message(run_id, "Scraper", msg)
 
-    syllabi = scrape_relevant_syllabi(state.title, max_results=3)
+    syllabi = await asyncio.to_thread(scrape_relevant_syllabi, state.title, max_results=2)
     
     if repo_logger and run_id > 0:
         repo_logger.log_message(run_id, "Scraper", "🌐 Connected to search engine. Analyzing top results...")
@@ -74,8 +78,6 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
     state.scraped_syllabi = syllabi
 
     if not syllabi or all('error' in s for s in syllabi):
-        if repo_logger:
-            repo_logger.close()
         return state
     
     # Upsert to Astra
@@ -99,26 +101,43 @@ def scrape_node(state: SyllabusState) -> SyllabusState:
 
     if all_texts:
         try:
-            from Application.API.dependencies import get_astra_repo
-            repo = next(get_astra_repo())
-            # Perform the heavy AstraDB upsert in a background thread.
-            # This prevents blocking the outline generation, as these chunks
-            # are only needed later by the AuthorAgent. Now fully thread-safe.
-            threading.Thread(target=repo.upsert_syllabus_chunks, args=(all_texts, all_metadatas), daemon=True).start()
-            log_msg = f"📡 Knowledge base update dispatched to background (thread-safe)"
-            if repo_logger: repo_logger.log_message(run_id, "AstraDB", log_msg)
-            print(log_msg)
+            manager = get_triple_db_manager()
+            repo = manager.astra
+            if repo:
+                def background_upsert(texts, metas):
+                    try:
+                        repo.upsert_syllabus_chunks(texts, metas)
+                    except Exception as thread_e:
+                        print(f"❌ Background Astra upsert failed: {thread_e}")
+
+                # Offload heavy vectorization to background to unblock graph execution
+                thread = threading.Thread(
+                    target=background_upsert, 
+                    args=(all_texts, all_metadatas), 
+                    daemon=True
+                )
+                thread.start()
+                log_msg = f"📡 Knowledge base update dispatched to background (thread-safe)"
+                if repo_logger: repo_logger.log_message(run_id, "AstraDB", log_msg)
+                print(log_msg)
+            else:
+                print("⚠️ Astra unavailable — skipping knowledge base upsert")
         except Exception as e:
             print(f"⚠️ Astra upsert failed: {e}")
         finally:
-            if repo_logger:
+            if repo_logger and run_id > 0:
                 repo_logger.log_message(run_id, "Scraper", f"Found {len(syllabi)} relevant sources")
-                repo_logger.close()
+    
+    state.scraper_time = time.time() - scrape_start
     return state
 
 def planner_node(state: SyllabusState, planner: PlannerAgent) -> SyllabusState:
     """Generate syllabus order"""
-    from Application.API.dependencies import _postgres_repo as repo_logger
+    from Application.API.dependencies import get_triple_db_manager
+    repo_logger = get_triple_db_manager().pg
+    
+    planner_start = time.time()
+    
     # Skip if syllabus is already determined
     if state.syllabus and len(state.syllabus) > 0:
         return state
@@ -133,104 +152,115 @@ def planner_node(state: SyllabusState, planner: PlannerAgent) -> SyllabusState:
     msg = f"✅ Syllabus organized: {len(state.syllabus)} chapters determined."
     print(msg)
     if repo_logger: repo_logger.log_message(run_id, "Planner", msg)
-        
+    
+    state.planner_time = time.time() - planner_start
     return state
 
-async def author_node(state: SyllabusState, author: AuthorAgent) -> SyllabusState:
+async def author_node(state: SyllabusState, author: AuthorAgent, reviewer: Optional[ReviewerAgent] = None) -> SyllabusState:
     """Generate real chapter content"""
-    from Application.API.dependencies import _postgres_repo as repo_logger
+    from Application.API.dependencies import get_triple_db_manager
+    repo_logger = get_triple_db_manager().pg
     print("✍️ Generating real chapter content...")
     run_id = getattr(state, "run_id", 0)
     
-    start_time = time.time()
+    author_start = time.time()
 
-    try:
-        # Use asyncio.gather for true non-blocking concurrency with async agents
-        tasks = [author.generate_content(topic, state, i) for i, topic in enumerate(state.syllabus)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+    # Use asyncio.gather for true non-blocking concurrency with async agents
+    # Passing the reviewer allows the AuthorAgent to perform internal critique/refinement loops.
+    tasks = [author.generate_content(topic, state, i, reviewer=reviewer) for i, topic in enumerate(state.syllabus)]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        new_chapters = {}
-        for i, result in enumerate(results):
-            topic = state.syllabus[i]
-            if isinstance(result, Exception):
-                new_chapters[topic] = f"Error: {str(result)}"
-            else:
-                new_chapters[topic] = result.content
-                if repo_logger: repo_logger.log_message(run_id, "Author", f"Finished: {topic}")
+    chapters_list = []
+    for i, result in enumerate(results):
+        topic = state.syllabus[i]
+        if isinstance(result, Exception):
+            error_chapter = Chapter(title=topic, content=f"Error: {str(result)}", chapter_order=i, status="error")
+            chapters_list.append(error_chapter)
+        else:
+            chapters_list.append(result)
+            if repo_logger: repo_logger.log_message(run_id, "Author", f"Finished: {topic}")
 
-    finally:
-        if repo_logger: repo_logger.close()
-    
-    state.chapters = new_chapters
-    state.generation_time = time.time() - start_time
-    print(f"📚 Generated {len(state.chapters)} chapters in {state.generation_time:.1f}s")
+    state.chapters = chapters_list
+    state.author_time = time.time() - author_start
+    print(f"📚 Generated {len(chapters_list)} chapters in {state.author_time:.1f}s")
     return state
 
 async def reviewer_node(state: SyllabusState, reviewer: ReviewerAgent) -> SyllabusState:
     """Review content quality"""
-    from Application.API.dependencies import _postgres_repo as repo_logger
+    from Application.API.dependencies import get_triple_db_manager
+    repo_logger = get_triple_db_manager().pg
     run_id = getattr(state, "run_id", 0)
+    
+    reviewer_start = time.time()
 
     msg = "🔍 Performing quality assurance and semantic review..."
     print(msg)
     if repo_logger: repo_logger.log_message(run_id, "Reviewer", msg)
 
-    failed = 0
-    chapters = state.chapters or {}
-    semantic_scores = []
-    try:
-        for topic, content in chapters.items():
-            # 1. Semantic Critique
-            critique = await reviewer.validate_content_with_llm(content, topic)
-            semantic_score = critique.get("semantic_score", 0.0)
-            semantic_pass = critique.get("semantic_pass", False)
-            semantic_scores.append(semantic_score)
-            
-            # 2. Heuristic Grounding & Style
-            is_substantive = reviewer.validate_factual_grounding(content)
-            is_styled = reviewer.validate_style(content)
-            
-            # 3. Compliance & Safety Check (Fixes ❌)
-            safety = await reviewer.check_intent_and_safety(content[:1000])
-            is_safe = safety.get("is_safe", True)
-
-            if not semantic_pass or not is_substantive or not is_styled or not is_safe:
-                failed += 1
-                err_msg = f"⚠️ Quality alert for '{topic}': Score={semantic_score}, Substantive={is_substantive}, Safe={is_safe}"
-                print(err_msg)
-                if repo_logger: repo_logger.log_message(run_id, "Reviewer", err_msg, "warning")
-            else:
-                if repo_logger: repo_logger.log_message(run_id, "Reviewer", f"✅ Content verified for '{topic}'")
+    chapters = state.chapters or []
     
-        state.reviewer_semantic_avg = sum(semantic_scores) / len(semantic_scores) if semantic_scores else 0.0
-        state.semantic_pass_rate = sum(s >= 0.6 for s in semantic_scores) / len(semantic_scores) if semantic_scores else 0.0
-        state.validated = state.semantic_pass_rate >= 0.8 and failed == 0
-        res_msg = f"🏁 Review complete: {'PASS' if state.validated else 'NEEDS_WORK'} ({failed}/{len(state.chapters)} issues found)"
-        print(res_msg)
-        if repo_logger: repo_logger.log_message(run_id, "Reviewer", res_msg)
-    finally:
-        if repo_logger: repo_logger.close()
+    async def review_single_chapter(chapter: Chapter):
+        # 1. Semantic Critique
+        critique = await reviewer.validate_content_with_llm(chapter.content, chapter.title)
+        semantic_score = critique.get("semantic_score", 0.0)
+        semantic_pass = critique.get("semantic_pass", False)
         
+        # 2. Heuristic Grounding & Style
+        is_substantive = reviewer.validate_factual_grounding(chapter.content)
+        is_styled = reviewer.validate_style(chapter.content)
+        
+        # 3. Compliance & Safety Check
+        safety = await reviewer.check_intent_and_safety(chapter.content[:1000])
+        is_safe = safety.get("is_safe", True)
+
+        is_valid = semantic_pass and is_substantive and is_styled and is_safe
+        if not is_valid:
+            err_msg = f"⚠️ Quality alert for '{chapter.title}': Score={semantic_score}, Substantive={is_substantive}, Safe={is_safe}"
+            if repo_logger: repo_logger.log_message(run_id, "Reviewer", err_msg, "warning")
+        
+        return semantic_score, is_valid
+
+    # Bottleneck Fix: Run reviews in parallel
+    review_tasks = [review_single_chapter(ch) for ch in chapters]
+    results = await asyncio.gather(*review_tasks)
+
+    semantic_scores = [r[0] for r in results]
+    valid_flags = [r[1] for r in results]
+    failed = valid_flags.count(False)
+
+    state.reviewer_semantic_avg = round(sum(semantic_scores) / len(semantic_scores), 2) if semantic_scores else 0.0
+    state.semantic_pass_rate = round(sum(s >= 0.6 for s in semantic_scores) / len(semantic_scores), 2) if semantic_scores else 0.0
+    state.validated = state.semantic_pass_rate >= 0.8 and failed == 0
+
+    res_msg = f"🏁 Review complete: {'PASS' if state.validated else 'NEEDS_WORK'} ({failed}/{len(chapters)} issues found)"
+    print(res_msg)
+    if repo_logger: repo_logger.log_message(run_id, "Reviewer", res_msg)
+    
+    state.reviewer_time = time.time() - reviewer_start
     return state
 
 def assemble_node(state: SyllabusState, assembler: AssemblerAgent) -> SyllabusState:
     """Assemble final course"""
-    from Application.API.dependencies import _postgres_repo as repo_logger
+    from Application.API.dependencies import get_triple_db_manager
+    repo_logger = get_triple_db_manager().pg
     run_id = getattr(state, "run_id", 0)
+    
+    assembler_start = time.time()
 
     msg = "📄 Finalizing course assembly and exporting assets..."
     print(msg)
     if repo_logger: repo_logger.log_message(run_id, "Assembler", msg)
 
-    chapters = state.chapters or {}
-    chapters_list = [{"title": k, "content": v} for k, v in chapters.items()]
+    # Bottleneck/Bug Fix: Chapters is a List[Chapter], not a Dict
+    chapters = state.chapters or []
+    chapters_list = [{"title": ch.title, "content": ch.content} for ch in chapters]
     filename = assembler.export_to_docx(chapters_list, f"{state.title.replace(' ', '_')}.docx")
     
     msg = f"🎉 Course generation successful! Artifact: {filename}"
     print(msg)
-    if repo_logger: repo_logger.log_message(run_id, "Assembler", msg)
-    if repo_logger: repo_logger.close()
+    if repo_logger and run_id > 0: repo_logger.log_message(run_id, "Assembler", msg)
     
+    state.assembler_time = time.time() - assembler_start
     return state
 
 def create_outline_workflow(title: str, level: str = "beginner", duration_months: int = 3, run_id: int = 0) -> Dict[str, Any]:
@@ -276,14 +306,13 @@ def create_outline_workflow(title: str, level: str = "beginner", duration_months
     result = workflow.invoke(initial_state)
     
     raw_syllabus = result["syllabus"][:6]
-    chapter_titles = [c["title"] if isinstance(c, dict) else c for c in raw_syllabus]
     template = CourseTemplate(
         title=title,
         level=level,
         duration_months=duration_months,
         learning_objectives=[f"Master {title}", "Build real projects"],
         prerequisites=[f"Basic {title.split()[0]}", "Programming experience"],
-        chapters=chapter_titles
+        chapters=[{"title": c["title"] if isinstance(c, dict) else str(c)} for c in raw_syllabus]
     ).model_dump()
     
     template["scraping_result"] = {
@@ -327,16 +356,15 @@ def planner_node_outline(state: OutlineState, planner: PlannerAgent) -> OutlineS
     else:
         state.syllabus = ordered_titles
     
-    if repo_logger: repo_logger.close()
     return state
 
 def create_syllabus_workflow(planner: PlannerAgent, author: AuthorAgent, reviewer: ReviewerAgent, assembler: AssemblerAgent):
     """Full domain-integrated workflow"""
     graph = StateGraph(SyllabusState)
-    graph.add_node("scrape", lambda s: scrape_node(s))
+    graph.add_node("scrape", scrape_node)
     graph.add_node("planner", lambda s: planner_node(s, planner))
     async def author_node_func(state):
-        return await author_node(state, author)
+        return await author_node(state, author, reviewer=reviewer)
 
     async def reviewer_node_func(state):
         return await reviewer_node(state, reviewer)
@@ -381,7 +409,7 @@ async def create_real_syllabus_workflow(
         run_id=run_id,
         topics=topics or [],
         syllabus=syllabus or [],
-        chapters={},
+        chapters=[],
         scraped_syllabi=None,
         validated=False,
         duration_months=duration_months,
