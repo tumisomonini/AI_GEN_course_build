@@ -23,6 +23,31 @@ def repo():
     r.close()
 
 
+@pytest.fixture(autouse=True)
+def truncate_test_tables(repo):
+    """Truncate test data before each test to avoid unique constraint violations."""
+    with repo.get_cursor() as cur:
+        cur.execute("""
+            DELETE FROM chapters 
+            WHERE course_id IN (
+                SELECT course_id FROM courses 
+                WHERE title LIKE '%Test%' OR title LIKE '%unique%' OR title LIKE '%Machine%' OR title LIKE '%Review%'
+            )
+        """)
+        cur.execute("""
+            DELETE FROM courses 
+            WHERE title LIKE '%Test%' OR title LIKE '%unique%' OR title LIKE '%Machine%' OR title LIKE '%Review%'
+        """)
+        cur.execute("""
+            DELETE FROM syllabus 
+            WHERE course_id NOT IN (SELECT course_id FROM courses)
+        """)
+        cur.execute("DELETE FROM approvals WHERE run_id NOT IN (SELECT run_id FROM runs)")
+        cur.execute("DELETE FROM logs WHERE run_id NOT IN (SELECT run_id FROM runs)")
+        cur.execute("DELETE FROM runs WHERE course_id NOT IN (SELECT course_id FROM courses)")
+    yield
+
+
 # @pytest.fixture(autouse=True)
 # def cleanup(repo):
 #     yield

@@ -25,10 +25,12 @@ def mock_planner():
 @pytest.fixture
 def mock_author():
     author = Mock(spec=AuthorAgent)
-    author.generate_content.side_effect = [
+    chapters = [
         Chapter(title="Intro", content="Detailed content for Intro.", chapter_order=1, status="generated"),
         Chapter(title="Advanced", content="Detailed content for Advanced.", chapter_order=2, status="generated")
     ]
+    author.generate_multiple_chapters = AsyncMock(return_value=chapters)
+    author.generate_content.side_effect = chapters
     return author
 
 @pytest.fixture
@@ -83,8 +85,8 @@ async def test_successful_workflow_execution(syllabus_workflow, mock_planner, mo
     # Verify planner was called
     mock_planner.generate_syllabus.assert_called_once_with(["Intro", "Advanced"])
 
-    # Verify author was called for each topic
-    assert mock_author.generate_content.call_count == 2
+    # Verify author was called
+    mock_author.generate_multiple_chapters.assert_called_once()
 
     # Verify reviewer was called for each chapter
     assert mock_reviewer.validate_factual_grounding.call_count == 2
@@ -137,11 +139,11 @@ async def test_workflow_with_validation_failure(syllabus_workflow, mock_planner,
 
 @pytest.mark.asyncio
 async def test_workflow_with_author_failure(syllabus_workflow, mock_planner, mock_author):
-    # Setup author to fail content generation
-    mock_author.generate_content.side_effect = [
+    # Setup author to return one error chapter via generate_multiple_chapters
+    mock_author.generate_multiple_chapters = AsyncMock(return_value=[
         Chapter(title="Intro", content="Detailed content for Intro.", chapter_order=1, status="generated"),
-        Exception("Failed to generate content")
-    ]
+        Chapter(title="Advanced", content="Error: Failed to generate content", chapter_order=2, status="error")
+    ])
 
     # Setup initial state
     initial_state = SyllabusState(

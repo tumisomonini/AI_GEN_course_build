@@ -50,14 +50,15 @@ services:
     networks:
       - course_net
 
-  # redis: (unused - remove if no caching needed)
-  # image: redis:7-alpine
-  # container_name: course_redis
-  # restart: always
-  # ports:
-  #   - "6379:6379"
-  # networks:
-  #   - course_net
+  redis:
+    image: redis:7-alpine
+    container_name: course_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - course_net
+
 
   neo4j:
     image: neo4j:5.20.0

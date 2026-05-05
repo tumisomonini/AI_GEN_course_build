@@ -21,6 +21,11 @@ class SyllabusState(BaseModel):
     generation_time: float = 0.0
     reviewer_semantic_avg: float = 0.0
     semantic_pass_rate: float = 0.0
+    scraper_time: float = 0.0
+    planner_time: float = 0.0
+    author_time: float = 0.0
+    reviewer_time: float = 0.0
+    assembler_time: float = 0.0
     
     # Removed topics_must_be_non_empty validator.
     # The scrape_node is responsible for populating topics. 

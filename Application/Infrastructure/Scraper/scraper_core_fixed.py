@@ -4,22 +4,22 @@ Scraper core module providing a stateful Scraper class with initialized resource
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import os
-import time
 import json
 import re
+import asyncio
 import concurrent.futures
-
 import requests
 import redis
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 from playwright.async_api import async_playwright
 
 try:
-    from ddgs import DDGS
+    from ddgs import DDGS as _DDGS
+    _DDGS_AVAILABLE = True
 except ImportError:
-    DDGS = None
+    _DDGS = None  # type: ignore[assignment]
+    _DDGS_AVAILABLE = False
 
 from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabus_dict, log_cleaning_stats
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
@@ -73,53 +73,53 @@ class Scraper:
         except Exception:
             self.redis_client = None
 
-        # Pooled Playwright resources
+        # Async Playwright resources (created per-call, no shared state)
         self._playwright = None
         self._browser = None
         self._context = None
         self._page = None
 
     # ------------------------------------------------------------------
-    # Lazy Playwright helpers
+    # Async Playwright helpers
     # ------------------------------------------------------------------
-    def _ensure_browser(self):
-        """Create Playwright browser/context on first use."""
-        if self._browser is None or self._browser.is_closed():
-            self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(headless=self.headless)
-            self._context = self._browser.new_context(
+    async def _fetch_page_html(self, url: str) -> str:
+        """Fetch page HTML using async Playwright. Launches a fresh context per call."""
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=self.headless)
+            context = await browser.new_context(
                 user_agent=self.user_agent,
                 viewport={"width": 1920, "height": 1080},
             )
-        return self._browser, self._context
+            page = await context.new_page()
+            try:
+                for attempt in range(2):
+                    try:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
+                        break
+                    except Exception:
+                        if attempt == 1:
+                            raise
+                        await asyncio.sleep(1)
+                return await page.content()
+            finally:
+                await page.close()
+                await browser.close()
 
     # ------------------------------------------------------------------
     # Core scrape methods
     # ------------------------------------------------------------------
-    def scrape_web(self, url: str) -> str:
-        """Scrape a web page using the reusable browser context."""
+    async def scrape_web_async(self, url: str) -> str:
+        """Async scrape a web page."""
         if 'wikipedia.org' in url.lower():
             raise ValueError("Wikipedia is blocked - use technical sites like realpython, freecodecamp, docs")
-
-        _, context = self._ensure_browser()
-        page = context.new_page()
-        try:
-            for attempt in range(2):
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
-                    break
-                except Exception:
-                    if attempt == 1:
-                        raise
-                    time.sleep(2)
-            html_content = page.content()
-        finally:
-            page.close()
-
+        html_content = await self._fetch_page_html(url)
         soup = BeautifulSoup(html_content, "html.parser")
-        syllabus_tags = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'td'])
-        lines = [tag.get_text(strip=True) for tag in syllabus_tags if tag.get_text(strip=True)]
+        lines = [tag.get_text(strip=True) for tag in soup.find_all(['h1','h2','h3','h4','h5','h6','p','li','td']) if tag.get_text(strip=True)]
         return "\n".join(lines)
+
+    def scrape_web(self, url: str) -> str:
+        """Sync wrapper around async scrape_web_async."""
+        return asyncio.run(self.scrape_web_async(url))
 
     def scrape_pdf(self, url: str) -> str:
         """Scrape a PDF using the reusable HTTP session."""
@@ -130,52 +130,29 @@ class Scraper:
         reader = PdfReader(io.BytesIO(response.content))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
 
-    def scrape_technical_website(self, url: str) -> Dict[str, Any]:
-        """
-        Robust scraper for any technical website (skip Wikipedia).
-        Returns structured {title, description, headings: [{heading, level, content}]}
-        """
+    async def scrape_technical_website_async(self, url: str) -> Dict[str, Any]:
+        """Async robust scraper for any technical website."""
         if 'wikipedia.org' in url.lower():
             return {"error": "Wikipedia blocked - use technical sites like realpython, freecodecamp, docs"}
-
-        _, context = self._ensure_browser()
-        page = context.new_page()
-        try:
-            for attempt in range(2):
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
-                    break
-                except Exception:
-                    if attempt == 1:
-                        raise
-                    time.sleep(2)
-            html_content = page.content()
-        finally:
-            page.close()
-
+        html_content = await self._fetch_page_html(url)
         soup = BeautifulSoup(html_content, "html.parser")
-        title = soup.find('title').get_text().strip() if soup.find('title') else "No title"
-        desc = soup.find('meta', property='og:description') or soup.find('meta', name='description')
-        description = desc['content'] if desc else ""
-
+        title_tag = soup.find('title')
+        title = title_tag.get_text().strip() if title_tag else "No title"
+        desc = soup.find('meta', property='og:description') or soup.find('meta', attrs={'name': 'description'})
+        description = str(desc.get('content', '')) if desc else ""
         headings = []
-        for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+        for tag in soup.find_all(['h1','h2','h3','h4','h5','h6']):
             heading_text = tag.get_text().strip()
             if heading_text:
                 content = []
                 sibling = tag.find_next_sibling()
-                while sibling and sibling.name not in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and sibling.name != 'div':
+                while sibling and sibling.name not in ['h1','h2','h3','h4','h5','h6','div']:
                     if sibling.name == 'p':
                         p_text = sibling.get_text().strip()
                         if p_text:
                             content.append(p_text)
                     sibling = sibling.find_next_sibling()
-                headings.append({
-                    "heading": heading_text,
-                    "level": tag.name,
-                    "content": content[:3]
-                })
-
+                headings.append({"heading": heading_text, "level": tag.name, "content": content[:3]})
         return {
             "title": title,
             "description": description[:500],
@@ -184,89 +161,86 @@ class Scraper:
             "sources": [{"title": title, "url": url}]
         }
 
+    def scrape_technical_website(self, url: str) -> Dict[str, Any]:
+        """Sync wrapper around async scrape_technical_website_async."""
+        return asyncio.run(self.scrape_technical_website_async(url))
+
     # ------------------------------------------------------------------
     # Search + scrape workflow
     # ------------------------------------------------------------------
-    def search_and_scrape(self, course_title: str, max_results: int = 3) -> List[Dict[str, Any]]:
+    async def search_and_scrape_async(self, course_title: str, max_results: int = 3) -> List[Dict[str, Any]]:
         """
-        Dynamic syllabus scraping based on course title/query.
-        1. DDG search for syllabi
-        2. Scrape top web/PDF results
-        3. Parse and return structured syllabus dictionaries with metadata
+        Async syllabus scraping: DDG search + parallel async Playwright page fetches.
         """
-        syllabi = []
-
-        # 0. Check Cache
         cache_key = f"scraper_cache:{course_title.lower().strip()}"
         if self.redis_client:
             try:
                 cached_data = self.redis_client.get(cache_key)
-                if cached_data:
+                if cached_data and isinstance(cached_data, str):
                     print(f"🎯 Cache hit for '{course_title}'")
-                    return json.loads(cached_data) if isinstance(cached_data, str) else cached_data
+                    return json.loads(cached_data)
             except Exception as e:
                 print(f"⚠️ Redis cache read failed: {e}")
 
+        if not _DDGS_AVAILABLE or _DDGS is None:
+            return [{'error': 'Search dependency missing. Run pip install duckduckgo-search', 'quality_score': 0}]
+
         try:
-            if DDGS is None:
-                print("⚠️ duckduckgo-search is not installed. Skipping search discovery.")
-                return [{'error': 'Search dependency missing. Run pip install duckduckgo-search', 'quality_score': 0}]
-
             search_query = f'{course_title} course syllabus topics outline'
-            ddgs_instance = DDGS()
-            results = list(ddgs_instance.text(search_query, max_results=max_results))
+            results = list(_DDGS().text(search_query, max_results=max_results))
+        except Exception as e:
+            return [{'error': f'DDG search failed: {e}', 'quality_score': 0}]
 
-            def _process_result(result):
-                url = result.get('href', '')
-                source_title = result.get('title', 'Unknown')
-                try:
-                    if 'pdf' in url.lower():
-                        cleaned_raw, raw_stats = clean_raw_text(self.scrape_pdf(url))
-                    else:
-                        cleaned_raw, raw_stats = clean_raw_text(self.scrape_web(url))
-                    log_cleaning_stats(raw_stats, 'scrape')
+        async def _process_result(result):
+            url = result.get('href', '')
+            source_title = result.get('title', 'Unknown')
+            try:
+                if 'pdf' in url.lower():
+                    raw = await asyncio.get_event_loop().run_in_executor(None, self.scrape_pdf, url)
+                else:
+                    raw = await self.scrape_web_async(url)
+                cleaned_raw, raw_stats = clean_raw_text(raw)
+                log_cleaning_stats(raw_stats, 'scrape')
+                from Application.Ports.scraper import parse_syllabus
+                structured_dict = parse_syllabus(cleaned_raw)
+                structured_dict['source_url'] = url
+                structured_dict['source_title'] = source_title
+                cleaned_struct, struct_stats = clean_syllabus_dict(structured_dict)
+                log_cleaning_stats({'structured': struct_stats}, 'parse')
+                topic_count = len(cleaned_struct.get('main_topics', []))
+                obj_count = len(cleaned_struct.get('learning_objectives', []))
+                cleaned_struct['quality_score'] = (topic_count * 10) + (obj_count * 5)  # type: ignore[assignment]
+                cleaned_struct['_cleaning_stats'] = {'raw': raw_stats, 'structured': struct_stats}  # type: ignore[assignment]
+                return cleaned_struct
+            except Exception as scrape_err:
+                return {'error': str(scrape_err), 'source_url': url, 'source_title': source_title, 'quality_score': 0}
 
-                    from Application.Ports.scraper import parse_syllabus
-                    structured_dict = parse_syllabus(cleaned_raw)
-                    structured_dict['source_url'] = url
-                    structured_dict['source_title'] = source_title
+        syllabi = await asyncio.gather(*[_process_result(r) for r in results])
+        syllabi = sorted(syllabi, key=lambda x: x.get('quality_score', 0), reverse=True)
+        final_results = syllabi[:3]
 
-                    cleaned_struct, struct_stats = clean_syllabus_dict(structured_dict)
-                    log_cleaning_stats({'structured': struct_stats}, 'parse')
+        if self.redis_client and final_results:
+            try:
+                self.redis_client.set(cache_key, json.dumps(final_results), ex=86400)
+            except Exception as e:
+                print(f"⚠️ Redis cache write failed: {e}")
 
-                    topic_count = len(cleaned_struct.get('main_topics', []))
-                    obj_count = len(cleaned_struct.get('learning_objectives', []))
-                    cleaned_struct['quality_score'] = (topic_count * 10) + (obj_count * 5)
-                    cleaned_struct['_cleaning_stats'] = {'raw': raw_stats, 'structured': struct_stats}
-                    return cleaned_struct
-                except Exception as scrape_err:
-                    return {
-                        'error': str(scrape_err),
-                        'source_url': url,
-                        'source_title': source_title,
-                        'quality_score': 0
-                    }
+        return final_results
 
-            max_workers = 5
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(_process_result, result) for result in results]
-                for future in concurrent.futures.as_completed(futures, timeout=15):
-                    try:
-                        syllabi.append(future.result())
-                    except Exception as e:
-                        syllabi.append({'error': f'Unexpected scrape thread failure: {e}', 'quality_score': 0})
-
-            syllabi.sort(key=lambda x: x.get('quality_score', 0), reverse=True)
-            final_results = syllabi[:3]
-
-            if self.redis_client and final_results:
-                try:
-                    self.redis_client.set(cache_key, json.dumps(final_results), ex=86400)
-                except Exception as e:
-                    print(f"⚠️ Redis cache write failed: {e}")
-
-            return final_results
-
+    def search_and_scrape(self, course_title: str, max_results: int = 3) -> List[Dict[str, Any]]:
+        """Sync wrapper — runs the async scraper in the current or a new event loop."""
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+                is_running = True
+            except RuntimeError:
+                is_running = False
+            if is_running:
+                # Already inside an async context (e.g. called via asyncio.to_thread)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(asyncio.run, self.search_and_scrape_async(course_title, max_results))
+                    return future.result(timeout=60)
+            return asyncio.run(self.search_and_scrape_async(course_title, max_results))
         except Exception as e:
             return [{'error': f'Search/scrape failed: {str(e)}', 'course_title': course_title}]
 
@@ -274,14 +248,7 @@ class Scraper:
     # Lifecycle
     # ------------------------------------------------------------------
     def close(self):
-        """Gracefully close all initialized resources."""
-        if self._browser and not self._browser.is_closed():
-            self._browser.close()
-            self._browser = None
-        if self._playwright:
-            self._playwright.stop()
-            self._playwright = None
-        self._context = None
+        """Gracefully close reusable HTTP session."""
         self.session.close()
 
     def __enter__(self):

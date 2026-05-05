@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class ReviewerAgent:
     def __init__(self, openai_client: Optional[AsyncOpenAI] = None):
         self.client = openai_client
-        self.model = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
+        self.model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 
         if not self.client:
             self._init_client()
@@ -28,12 +28,12 @@ class ReviewerAgent:
 
         openrouter_key = os.getenv("OPENROUTER_API_KEY")
         if openrouter_key:
-            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "LLM_MODEL", "openai/gpt-4o-mini"):
+            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "OPENROUTER_MODEL", "openai/gpt-4o-mini"):
                 return
 
         mistral_key = os.getenv("MISTRAL_API_KEY")
         if mistral_key:
-            if self._setup_client("https://api.mistral.ai/v1", mistral_key, "LLM_MODEL", "mistral-small-latest"):
+            if self._setup_client("https://api.mistral.ai/v1", mistral_key, "MISTRAL_MODEL", "mistral-small-latest"):
                 return
 
         logger.warning("ReviewerAgent initialized without LLM client (Safety/Review checks will be bypassed)")
@@ -50,7 +50,7 @@ class ReviewerAgent:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=15),
-        retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.Timeout, openai.APIConnectionError)),
+        retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.APIConnectionError)),
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
     async def _call_llm(self, **kwargs):
@@ -130,34 +130,20 @@ class ReviewerAgent:
             logger.error(f"Safety check failed: {e}")
             return {"is_valid": False, "is_safe": False, "reason": f"Safety check error: {str(e)}"}
 
-    async def route_query(self, query: str) -> Dict[str, Any]:
+    def route_query(self, query: str) -> Dict[str, Any]:
         """
-        Routes the query to the appropriate RAG strategy.
-        - vector: Technical facts, code, or specific snippets.
-        - kg: Topic relationships, prerequisites, and syllabus structure.
-        - hybrid: Comprehensive educational content.
+        Routes the query to the appropriate RAG strategy via keyword matching.
+        Avoids an LLM round-trip for a deterministic classification task.
+        - vector: implementation details, syntax, code, API, troubleshooting
+        - kg: learning paths, prerequisites, topic relationships, definitions
+        - hybrid: full chapters, lesson plans, comprehensive guides (default)
         """
-        if not self.client:
-            return {"strategy": "vector", "reason": "No LLM available for routing"}
-
-        prompt = (
-            f"Analyze the educational query: '{query}'\n"
-            "Classify the best retrieval strategy:\n"
-            "- 'vector': Use if the user asks for implementation details, syntax, API references, or troubleshooting.\n"
-            "- 'kg': Use if the user asks about learning paths, how topics connect, or high-level definitions.\n"
-            "- 'hybrid': Use for generating full chapters, lesson plans, or comprehensive guides.\n"
-            "Return a JSON object: {'strategy': 'vector'|'kg'|'hybrid', 'confidence': 0.0-1.0, 'reason': 'string'}."
-        )
-        try:
-            response = await self._call_llm(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
-            )
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            logger.error(f"Query routing failed: {e}")
-            return {"strategy": "hybrid", "reason": "Error during routing, falling back to hybrid"}
+        q = query.lower()
+        if re.search(r'\b(syntax|code|implement|api|debug|error|example|snippet|function|class|method|library)\b', q):
+            return {"strategy": "vector", "confidence": 0.9, "reason": "technical/code query"}
+        if re.search(r'\b(prerequisite|learning path|roadmap|relate|connect|depend|order|sequence|overview|definition)\b', q):
+            return {"strategy": "kg", "confidence": 0.9, "reason": "structural/relational query"}
+        return {"strategy": "hybrid", "confidence": 0.85, "reason": "comprehensive content query"}
 
     async def evaluate_rag_faithfulness(self, content: str, source_chunks: List[str]) -> Dict[str, Any]:
         """

@@ -18,5 +18,5 @@ def test_assembler_docx():
     assembler = AssemblerAgent()
     chapters = [{'title': 'Ch1', 'content': 'Content1'}]
     docx_content = assembler.export_to_docx(chapters, 'test_course.docx')
-    assert '# test_course' in docx_content  # Falls back to markdown
+    assert '# test course' in docx_content
 

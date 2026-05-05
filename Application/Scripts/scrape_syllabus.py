@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import os
 import argparse
 from utils.env_loader import load_root_env
@@ -12,12 +12,15 @@ from Application.Ports.scraper import parse_syllabus, scrape_relevant_syllabi
 from Domain.syllabus import Syllabus
 from Domain.course import Course
 
-def scrape_and_structure(url: str = None, file_path: str = None, query: str = None) -> Syllabus:
+def scrape_and_structure(url: Optional[str] = None, file_path: Optional[str] = None, query: Optional[str] = None) -> Syllabus:
     if query:
         syllabi = scrape_relevant_syllabi(query)
-        # Convert top syllabus to Domain model
-        top_syllabus = next((s for s in syllabi if not hasattr(s, 'issues') or not s.issues), None)
-        structured = top_syllabus if top_syllabus else Syllabus(title="No syllabus found", course=Course(title="Empty", audience="general", outcomes=[]), chapters=[])
+        # Find top quality dict result and convert to Domain model
+        top_dict = next((s for s in syllabi if not s.get('error') and s.get('quality_score', 0) > 0), None)
+        if top_dict:
+            structured = Syllabus.from_scraped_dict(top_dict)
+        else:
+            structured = Syllabus(title="No syllabus found", course=Course(title="Empty", audience="general", outcomes=[]), chapters=[])
     elif url:
         cleaned_raw, raw_stats = clean_raw_text(scrape_web_syllabus(url))
         log_cleaning_stats(raw_stats, 'raw')
@@ -66,7 +69,7 @@ if __name__ == "__main__":
         print("Error: Provide --url, --file, or --query")
         exit(1)
     
-    source = args.query or args.url or args.file
+    source: str = args.query or args.url or args.file or "unknown"
     structured_syllabus = scrape_and_structure(url=args.url, file_path=args.file, query=args.query)
     
     print("Structured syllabus ready.")

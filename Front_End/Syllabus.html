@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syllabus Generation</title>
+  <link rel="stylesheet" href="Css/style.css">
+  <link rel="stylesheet" href="Css/Syllabus.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🎓 AI Course Builder</h1>
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="courses.html">Courses</a>
+        <a href="Syllabus.html" class="active">Syllabus</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="exports.html">Exports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="page-header"><h2>Generate Syllabus</h2></div>
+
+      <div class="syllabus-form-container card" style="padding:2rem;">
+        <form id="syllabus-form">
+          <div class="form-group">
+            <label for="syllabus-title">Course Title</label>
+            <input type="text" id="syllabus-title" placeholder="e.g. Introduction to Machine Learning" required>
+          </div>
+          <div class="form-group">
+            <label for="topics-input">Topics (comma-separated)</label>
+            <input type="text" id="topics-input" placeholder="e.g. Linear Regression, Neural Networks, NLP">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="level-select">Level</label>
+              <select id="level-select">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="duration-input">Duration (months)</label>
+              <input type="number" id="duration-input" value="3" min="1" max="24">
+            </div>
+          </div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.5rem;">
+            <button type="submit" class="btn btn-primary" id="generate-btn">Generate Syllabus</button>
+            <button type="button" class="btn btn-secondary" id="scrape-btn">🔍 Scrape Sources First</button>
+          </div>
+          <div class="progress-container" id="progress-wrap" style="display:none;">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Results -->
+      <div id="syllabus-results" style="display:none;" class="syllabus-results">
+        <div class="results-header">
+          <h3 id="results-title">Generated Syllabus</h3>
+          <div class="results-actions">
+            <button class="btn btn-secondary btn-sm" id="edit-btn">✏️ Edit</button>
+            <button class="btn btn-success btn-sm" id="approve-btn">✅ Approve</button>
+            <button class="btn btn-primary btn-sm" id="export-btn">⬇️ Export</button>
+          </div>
+        </div>
+        <div id="syllabus-content"></div>
+        <div class="generation-logs" id="logs-section" style="display:none;">
+          <h4 style="margin-bottom:.5rem;">Agent Logs</h4>
+          <div class="log-stream" id="logs-container"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer><div class="container"><p>&copy; 2026 Agentic Course Generation Platform</p></div></footer>
+
+  <script src="JS/api.js"></script>
+  <script src="JS/Syllabus.js"></script>
+</body>
+</html>

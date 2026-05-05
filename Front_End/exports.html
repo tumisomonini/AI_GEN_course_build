@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exports</title>
+  <link rel="stylesheet" href="Css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🎓 AI Course Builder</h1>
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="courses.html">Courses</a>
+        <a href="Syllabus.html">Syllabus</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="exports.html" class="active">Exports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h2>Export Courses</h2>
+        <button class="btn btn-secondary" onclick="loadExports()">↻ Refresh</button>
+      </div>
+
+      <div class="search-filter">
+        <div class="filter-group">
+          <label for="export-format">Format:</label>
+          <select id="export-format">
+            <option value="markdown">Markdown (.md)</option>
+            <option value="json">JSON (.json)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="exports-container">
+        <div class="empty-state"><p>Loading completed courses…</p></div>
+      </div>
+    </div>
+  </main>
+
+  <footer><div class="container"><p>&copy; 2026 Agentic Course Generation Platform</p></div></footer>
+
+  <script src="JS/api.js"></script>
+  <script>
+    function showNotification(message, type = 'info') {
+        const el = document.createElement('div');
+        el.className = `notification notification-${type}`;
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => {
+            el.style.animation = 'slideOut .25s ease forwards';
+            setTimeout(() => el.remove(), 260);
+        }, 4000);
+    }
+
+    async function loadExports() {
+        const container = document.getElementById('exports-container');
+        container.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
+        try {
+            const data = await api.getCourses('');
+            const completed = (data.results || []).filter(c => c.status === 'completed');
+            if (!completed.length) {
+                container.innerHTML = '<div class="empty-state"><p>No completed courses to export yet.</p></div>';
+                return;
+            }
+            container.innerHTML = completed.map(c => `
+                <div class="card" style="padding:1.25rem 1.5rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+                    <div>
+                        <strong>${c.title || 'Untitled'}</strong>
+                        <span style="margin-left:.75rem;font-size:.8rem;color:var(--text-light);">ID: ${c.course_id}</span>
+                    </div>
+                    <div style="display:flex;gap:.5rem;">
+                        <button class="btn btn-sm btn-primary" onclick="doDownload(${c.course_id}, 'markdown')">⬇ Markdown</button>
+                        <button class="btn btn-sm btn-secondary" onclick="doDownload(${c.course_id}, 'json')">⬇ JSON</button>
+                    </div>
+                </div>`).join('');
+        } catch(e) {
+            container.innerHTML = `<div class="empty-state"><p>Failed to load: ${e.message}</p></div>`;
+        }
+    }
+
+    async function doDownload(courseId, format) {
+        try {
+            const { blob, filename } = await api.downloadCourse(courseId, format);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        } catch(e) {
+            showNotification(`Download failed: ${e.message}`, 'error');
+        }
+    }
+
+    loadExports();
+  </script>
+</body>
+</html>

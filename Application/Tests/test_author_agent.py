@@ -33,12 +33,25 @@ def mock_openai_client():
 
 @pytest.mark.asyncio
 async def test_author_generate_content(mock_manager, mock_openai_client):
-    with patch('Agents.Author_agent.AsyncOpenAI', return_value=mock_openai_client):
+    with patch('Application.Agents.Author_agent.AsyncOpenAI', return_value=mock_openai_client):
         author = AuthorAgent(manager=mock_manager)
-        # Manually inject the client as the init logic might override it
         author.openai_client = mock_openai_client
         
         chapter = await author.generate_content("Python Basics")
         assert isinstance(chapter, Chapter)
         assert "Generated content" in chapter.content
         mock_openai_client.chat.completions.create.assert_called()
+
+@pytest.mark.asyncio
+async def test_author_parallel(mock_manager, mock_openai_client):
+    with patch('Application.Agents.Author_agent.AsyncOpenAI', return_value=mock_openai_client):
+        author = AuthorAgent(manager=mock_manager)
+        author.openai_client = mock_openai_client
+        
+        topics = ["Python Basics", "Data Structures"]
+        chapters = await author.generate_multiple_chapters(topics)
+        assert len(chapters) == 2
+        for chapter in chapters:
+            assert isinstance(chapter, Chapter)
+            assert "Generated content" in chapter.content
+

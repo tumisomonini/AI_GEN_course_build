@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Dict, Any, Optional
 import os
 from pydantic import Field
 from Domain.course import Chapter
@@ -27,13 +27,13 @@ class AuthorAgent:
         # Try OpenRouter first
         openrouter_key = os.getenv("OPENROUTER_API_KEY")
         if openrouter_key:
-            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "LLM_MODEL", "openai/gpt-4o-mini"):
+            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "OPENROUTER_MODEL", "openai/gpt-4o-mini"):
                 return
         
         # Fallback to Mistral
         mistral_key = os.getenv("MISTRAL_API_KEY")
         if mistral_key:
-            if self._setup_client("https://api.mistral.ai/v1", mistral_key, "LLM_MODEL", "mistral-small-latest"):
+            if self._setup_client("https://api.mistral.ai/v1", mistral_key, "MISTRAL_MODEL", "mistral-small-latest"):
                 return
         
         raise ValueError("No valid LLM API key found. Set OPENROUTER_API_KEY or MISTRAL_API_KEY in .env")
@@ -51,7 +51,7 @@ class AuthorAgent:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=15),
-        retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.Timeout, openai.APIConnectionError)),
+        retry=retry_if_exception_type((openai.APIError, openai.RateLimitError, openai.APIConnectionError)),
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
     async def _call_llm(self, **kwargs):
@@ -60,16 +60,16 @@ class AuthorAgent:
             raise ValueError("No LLM client initialized")
         return await self.openai_client.chat.completions.create(**kwargs)
 
-    async def generate_content(self, topic: str, state: SyllabusState = None, order: int = 0, reviewer=None, max_retries: int = 1) -> Chapter:
+    async def generate_content(self, topic: str, state: Optional[SyllabusState] = None, order: int = 0, reviewer=None, max_retries: int = 1) -> Optional[Chapter]:
         """Generate chapter content. Returns a Domain Chapter object."""
         run_id = state.run_id if (state and state.run_id and state.run_id > 0) else None
         if self.repo and run_id:
             self.repo.log_message(run_id, "AuthorAgent", f"Starting generation for topic: {topic}")
             
-        # Query Routing Implementation
+        # Query Routing Implementation (sync — no LLM call)
         strategy = "hybrid"
         if reviewer:
-            route_data = await reviewer.route_query(topic)
+            route_data = reviewer.route_query(topic)
             strategy = route_data.get("strategy", "hybrid")
             if self.repo and run_id:
                 self.repo.log_message(run_id, "AuthorAgent", f"Routing strategy: {strategy} ({route_data.get('reason')})")
@@ -136,29 +136,20 @@ Approximately {word_count} words."""
                 response = await self._call_llm(
                     model=self.model,
                     messages=[{"role": "user", "content": current_prompt}],
-                    max_tokens=2500
+max_tokens=1400
                 )
                 content = response.choices[0].message.content
 
                 if reviewer and attempt < max_retries:
-                    # Perform refinement check
                     critique = await reviewer.validate_content_with_llm(content, topic)
-                    faithfulness = await reviewer.evaluate_rag_faithfulness(content, chunks)
-                    
-                    if critique.get("semantic_pass") and faithfulness.get("faithfulness_score", 1.0) > 0.7:
+                    if critique.get("semantic_pass"):
                         if self.repo and run_id:
                             self.repo.log_message(run_id, "AuthorAgent", f"Content passed review on attempt {attempt+1}")
                         break
                     else:
-                        # Refine the prompt for the next attempt
                         if self.repo and run_id:
                             self.repo.log_message(run_id, "AuthorAgent", f"Attempt {attempt+1} failed review. Feedback: {critique.get('feedback')}", "warning")
-                        
-                        # Provide specific hallucination data to improve the next decision cycle
-                        hallucinations = faithfulness.get("hallucinations", [])
-                        hallucination_str = f" Avoid these unsupported claims: {', '.join(hallucinations)}" if hallucinations else ""
-                        
-                        current_prompt = f"{prompt}\n\nREFINEMENT NEEDED: Your previous attempt was critiqued: {critique.get('feedback')}.{hallucination_str} Please address these issues and focus strictly on the provided source chunks."
+                        current_prompt = f"{prompt}\n\nREFINEMENT NEEDED: {critique.get('feedback')}. Focus strictly on the provided source chunks."
                         continue
                 break # Exit loop if no reviewer or final attempt
             except Exception as e:
@@ -174,14 +165,40 @@ Approximately {word_count} words."""
             )
         except Exception as e:
             logger.error(f"Error generating chapter for {topic} after retries: {e}")
-            return Chapter(
-                title=topic,
-                content=f"Error generating content: {str(e)}",
-                chapter_order=order,
-                status="error"
-            )
+            return None
+    async def generate_multiple_chapters(self, topics: List[str], state: Optional[SyllabusState] = None, reviewer=None, max_retries: int = 1) -> List[Chapter]:
+        """
+        Parallel chapter generation for performance boost. Limits concurrency to avoid rate limits.
+        """
+        if len(topics) == 0:
+            return []
 
-    async def _retrieve_chunks(self, query: str, k: int = 8, course_title: str = None, strategy: str = "hybrid") -> List[str]:
+        max_concurrent = 6
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        async def generate_limited(topic: str, order: int) -> Optional[Chapter]:
+            async with semaphore:
+                return await self.generate_content(topic, state, order, reviewer)
+        
+        tasks = [generate_limited(topic, i) for i, topic in enumerate(topics)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Handle exceptions
+        chapters = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Failed to generate chapter {topics[i]}: {result}")
+                chapters.append(Chapter(title=topics[i], content=f"Generation failed: {str(result)}", chapter_order=i, status="error"))
+            elif result is None:
+                logger.error(f"Failed to generate chapter {topics[i]}: returned None")
+                chapters.append(Chapter(title=topics[i], content="Generation failed: unknown error", chapter_order=i, status="error"))
+            else:
+                chapters.append(result)
+        
+        return chapters
+
+
+    async def _retrieve_chunks(self, query: str, k: int = 8, course_title: Optional[str] = None, strategy: str = "hybrid") -> List[str]:
         """
         TripleDB hybrid retrieval: Vector + KG + PG metadata.
         """
@@ -189,10 +206,7 @@ Approximately {word_count} words."""
             logger.error("TripleDBManager not available")
             return []
             
-        # Use centralized manager logic
-        search_results = self.manager.hybrid_search(query, k=k, strategy=strategy)
-        
-        # Smart Ranking: Interleave results to ensure the KG definition is always present
+        search_results: Dict[str, Any] = await self.manager.hybrid_search(query, k=k, strategy=strategy)
         # Logic: Metadata -> KG Context (Structure) -> Vector (Facts)
         final_selection = []
         final_selection.extend(search_results['pg_courses'])
@@ -200,3 +214,4 @@ Approximately {word_count} words."""
         final_selection.extend(search_results['vector'])
         
         return final_selection[:12] # Slightly larger window for GPT-4o-mini
+

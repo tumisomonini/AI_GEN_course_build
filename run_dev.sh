@@ -11,7 +11,7 @@ if [ -f ".env" ]; then
   done < .env
 fi
 
-uvicorn Application.API.Main:app \
+uvicorn Application.API.Main_fixed:app \
   --host 0.0.0.0 \
   --port 8000 \
   --reload \

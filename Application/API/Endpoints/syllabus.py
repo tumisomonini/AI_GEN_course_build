@@ -1,23 +1,22 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Callable
 import json
 
 try:
     from Application.Workflows.syllabus_workflow import create_syllabus_workflow
 except ImportError:
-    create_syllabus_workflow = None
+    create_syllabus_workflow: Optional[Callable] = None
 
 try:
     from ..agents import get_real_agents as get_agents
 except ImportError:
-    get_agents = lambda: {}
+    get_agents: Callable[[], dict] = lambda: {}
 
 try:
     from Application.Ports.scraper import scrape_relevant_syllabi
 except ImportError:
-    scrape_relevant_syllabi = lambda title, max_results: []
-
+    scrape_relevant_syllabi: Optional[Callable] = lambda title, max_results: []
 
 
 class SyllabusRequest(BaseModel):
@@ -32,6 +31,8 @@ router = APIRouter()
 @router.post("/scrape")
 async def scrape_syllabus(request: ScrapeRequest):
     """Scrape relevant syllabi for given course title and store chunks in AstraDB"""
+    if scrape_relevant_syllabi is None:
+        raise HTTPException(503, "Scraper service not available - check dependencies")
     try:
         syllabi = scrape_relevant_syllabi(request.title, max_results=5)
         
@@ -86,6 +87,8 @@ async def generate_syllabus(request: SyllabusRequest):
     agents = get_agents()
     if not agents:
         raise HTTPException(503, "Agents not initialised — server may still be starting up")
+    if create_syllabus_workflow is None:
+        raise HTTPException(503, "Syllabus workflow not available - check dependencies")
     try:
         # If title provided, could optionally scrape first (future enhancement)
         if request.title:
@@ -116,3 +119,4 @@ async def generate_syllabus(request: SyllabusRequest):
         traceback.print_exc()
         print(f"Error type: {type(e).__name__}, message: {str(e)}")
         raise HTTPException(500, f"Generation failed: {type(e).__name__}: {str(e)}")
+

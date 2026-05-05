@@ -103,13 +103,11 @@ def init_postgres_singleton() -> Optional[PostgresRepo]:
     if _postgres_repo is not None:
         return _postgres_repo
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
     def _init():
         repo = PostgresRepo()
         try:
-            repo.init_schema()  # Ensure tables exist
+            repo.init_schema()
         except Exception as schema_e:
-            # Gracefully handle DuplicateTable and other schema errors
             err_str = str(schema_e).lower()
             if 'duplicate' in err_str or 'already exists' in err_str:
                 print(f"⚠️ Schema init: tables already exist ({schema_e})")
@@ -220,8 +218,7 @@ def check_all_dbs():
     try:
         if _postgres_repo is None:
             raise ValueError("Postgres not initialized")
-        with _postgres_repo.get_cursor() as cur:
-            cur.execute("SELECT 1")
+        _postgres_repo.search_courses('')  # lightweight ORM connectivity check
         results['postgres'] = 'healthy'
         print("✅ Postgres health OK")
     except Exception as e:

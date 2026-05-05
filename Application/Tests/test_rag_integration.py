@@ -1,19 +1,21 @@
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from Application.API.Main import app
 import os
 import time
-import pytest
 
 client = TestClient(app)
 
 class TestRAGIntegration:
-    def test_full_rag_flow(self):
+    @patch('Application.Ports.Astra_repo.AstraRepo')
+    def test_full_rag_flow(self, mock_astra):
+        mock_astra.return_value.similarity_search.return_value = [{'document': 'mock chunk', 'score': 0.8}]
+        
         # TripleDB enhanced
         health_resp = client.get("/health")
         assert health_resp.status_code == 200
         health = health_resp.json()
-        # Astra is optional — only require postgres + neo4j healthy
         assert health['triple_manager']['integrated'] == 'ready'
         print('✅ TripleDB /health OK')
 
@@ -22,6 +24,7 @@ class TestRAGIntegration:
         scrape_resp = client.post("/syllabus/scrape", json=scrape_payload)
         assert scrape_resp.status_code in [200, 422]
         print("RAG + TripleDB tested")
+
 
     def test_vector_retrieval_accuracy(self):
         """Unit test for retrieval precision."""

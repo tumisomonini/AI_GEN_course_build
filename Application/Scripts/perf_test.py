@@ -44,8 +44,8 @@ def context_window_check(tokens_used, max_tokens=128000):
 
 
 def cost_estimate(input_tokens, output_tokens):
-    cost = (input_tokens * COST_PER_1M_INPUT + output_tokens * COST_PER_1M_OUTPUT) / 1_000
-    score = max(0, 10 - cost * 10)
+    cost = input_tokens * COST_PER_1M_INPUT + output_tokens * COST_PER_1M_OUTPUT
+    score = max(0, 10 - cost * 1000)
     return {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost_usd': cost, 'score': score}
 
 

@@ -5,6 +5,7 @@ from sklearn.cluster import KMeans
 import networkx as nx
 from Application.Infrastructure.graphDb.models import Topic
 from Application.Infrastructure.graphDb.neo4j_repo import Neo4jNeomodelRepository
+from neomodel.exceptions import DoesNotExist
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +21,9 @@ class KnowledgeGraph:
 
     def add_topic(self, topic_name: str, description: str = "") -> bool:
         try:
-            topic, created = Topic.get_or_create({'name': topic_name}, description=description)
+            topic, created = Topic.get_or_create({'name': topic_name}, description=description)  # type: ignore[attr-defined]
             if created:
-                topic.description = description
+                topic.description = description  # type: ignore[attr-defined]
                 topic.save()
             return True
         except Exception as e:
@@ -35,10 +36,10 @@ class KnowledgeGraph:
             prereq, _ = Topic.get_or_create({'name': prerequisite_name})
             topic.prerequisites.connect(prereq)
             return True
-        except Topic.DoesNotExist:
-            logger.warning(f"Topic {topic_name} not found")
-            return False
-        except Exception as e:
+        except Exception as e:  # type: ignore[union-attr]
+            if "DoesNotExist" in str(e):
+                logger.warning(f"Topic {topic_name} not found")
+                return False
             logger.error(f"Failed to add prerequisite {prerequisite_name} for {topic_name}: {str(e)}")
             return False
 
@@ -46,16 +47,20 @@ class KnowledgeGraph:
         try:
             topic = Topic.nodes.get(name=topic_name)
             return [p.name for p in topic.prerequisites.all()]
-        except Topic.DoesNotExist:
-            logger.warning(f"Topic {topic_name} not found")
-            return []
+        except Exception as e:  # type: ignore[union-attr]
+            if "DoesNotExist" in str(e):
+                logger.warning(f"Topic {topic_name} not found")
+                return []
+            raise
 
     def get_dependent_topics(self, topic_name: str) -> List[str]:
         try:
             topic = Topic.nodes.get(name=topic_name)
             return [d.name for d in topic.dependents.all()]
-        except Topic.DoesNotExist:
-            return []
+        except Exception as e:  # type: ignore[union-attr]
+            if "DoesNotExist" in str(e):
+                return []
+            raise
 
     def get_all_topics(self) -> List[Dict[str, str]]:
         topics = Topic.nodes.all()
@@ -107,7 +112,7 @@ class KnowledgeGraph:
                     if prereq not in topic_order[:i]:
                         logger.warning(f"Prerequisite {prereq} for {topic_name} not before it")
                         return False
-            except Topic.DoesNotExist:
+            except DoesNotExist:
                 continue
         return True
 
@@ -159,7 +164,7 @@ class KnowledgeGraph:
                 graph[dep].add(topic_name)
             
             return graph
-        except Topic.DoesNotExist:
+        except DoesNotExist:
             return {}
 
     def get_related_topics(self, topic_name: str, limit: int = 5) -> List[str]:
@@ -167,7 +172,7 @@ class KnowledgeGraph:
             topic = Topic.nodes.get(name=topic_name)
             related = [r.name for r in topic.related_to.all()]
             return related[:limit]
-        except Topic.DoesNotExist:
+        except DoesNotExist:
             return []
 
     def add_related_topic(self, topic_name: str, related_topic_name: str) -> bool:
@@ -176,12 +181,13 @@ class KnowledgeGraph:
             t2 = Topic.nodes.get(name=related_topic_name)
             t1.related_to.connect(t2)
             return True
-        except Topic.DoesNotExist:
+        except DoesNotExist:
             return False
 
     def get_topic_details(self, topic_name: str) -> Optional[Dict[str, str]]:
         try:
             topic = Topic.nodes.get(name=topic_name)
             return {"name": topic.name, "description": topic.description}
-        except Topic.DoesNotExist:
+        except DoesNotExist:
             return None
+

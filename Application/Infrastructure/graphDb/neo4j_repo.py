@@ -1,4 +1,5 @@
 from neomodel import db
+from neomodel.exceptions import DoesNotExist as NeoDoesNotExist
 from typing import List, Optional
 import os
 from .models import Topic, Course
@@ -19,14 +20,14 @@ class Neo4jNeomodelRepository:
             t1 = Topic.nodes.get(name=topic)
             t2 = Topic.nodes.get_or_create({'name': prerequisite})[0]
             t1.prerequisites.connect(t2)
-        except Topic.DoesNotExist:
+        except NeoDoesNotExist:
             pass
     
     def get_prerequisites(self, topic: str) -> List[str]:
         try:
             t = Topic.nodes.get(name=topic)
             return [p.name for p in t.prerequisites.all()]
-        except Topic.DoesNotExist:
+        except NeoDoesNotExist:
             return []
     
     def close(self):
@@ -42,7 +43,7 @@ class Neo4jNeomodelRepository:
             course = Course.get_or_create({'course_id': course_id, 'title': title})[0]
             for topic_name in topic_names:
                 topic = Topic.get_or_create({'name': topic_name})[0]
-                course.topics.connect(topic)
+                course.topics.connect(topic)  # type: ignore[union-attr]
             print(f"✅ Linked course {course_id} to topics: {topic_names}")
         except Exception as e:
             print(f"❌ Link topics failed: {e}")

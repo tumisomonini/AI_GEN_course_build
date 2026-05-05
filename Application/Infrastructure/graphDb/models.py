@@ -1,4 +1,4 @@
-from neomodel import StructuredNode, StringProperty, DateTimeProperty, Relationship, IntegerProperty, ZeroOrMore
+from neomodel import StructuredNode, StringProperty, DateTimeProperty, Relationship, RelationshipTo, IntegerProperty, ZeroOrMore
 from typing import List, Optional
 from datetime import datetime
 
@@ -8,7 +8,7 @@ class Course(StructuredNode):
     created_at = StringProperty(default=lambda: datetime.utcnow().isoformat())
 
     # Relationships
-    topics = Relationship('Topic', 'HAS_TOPIC', cardinality=ZeroOrMore)
+    topics = RelationshipTo('Topic', 'HAS_TOPIC', cardinality=ZeroOrMore)
 
 class Topic(StructuredNode):
     name = StringProperty(unique_index=True, max_length=255)
@@ -17,8 +17,8 @@ class Topic(StructuredNode):
     updated_at = StringProperty(default=lambda: datetime.utcnow().isoformat())
     
     # Relationships
-    prerequisites = Relationship('Topic', 'PREREQUISITE', cardinality=ZeroOrMore)
-    dependents = Relationship('Topic', 'PREREQUISITE', cardinality=ZeroOrMore)
+    prerequisites = RelationshipTo('Topic', 'PREREQUISITE', cardinality=ZeroOrMore)
+    dependents = RelationshipTo('Topic', 'PREREQUISITE', cardinality=ZeroOrMore)
     
     # Related
-    related_to = Relationship('Topic', 'RELATED_TO', cardinality=ZeroOrMore)
+    related_to = RelationshipTo('Topic', 'RELATED_TO', cardinality=ZeroOrMore)

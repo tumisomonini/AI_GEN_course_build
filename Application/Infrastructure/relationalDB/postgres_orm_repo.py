@@ -1,13 +1,13 @@
 import os
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session as OrmSession
 from sqlalchemy.exc import SQLAlchemyError
 from contextlib import contextmanager
 from typing import List, Dict, Any, Optional, Generator
 from sqlalchemy import func
 from pathlib import Path
 from dotenv import load_dotenv
-from .models import Base, Course, Chapter, Syllabus, Run, Log, Approval, Review, Metric, Cost, Artifact, Export, Session, User
+from .models import Base, Course, Chapter, Syllabus, Run, Log, Approval, Review, Metric, Cost, Artifact, Export, Session as SessionModel, User
 
 load_dotenv(Path(__file__).resolve().parents[4] / '.env')
 
@@ -26,7 +26,7 @@ class PostgresORMRepository:
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
     
     @contextmanager
-    def get_session(self) -> Generator[Session, None, None]:
+    def get_session(self) -> Generator[OrmSession, None, None]:
         session = self.SessionLocal()
         try:
             yield session
@@ -49,7 +49,7 @@ class PostgresORMRepository:
                 # Update existing course
                 existing_course.description = description
                 existing_course.audience = audience
-                existing_course.updated_at = func.current_timestamp()
+                existing_course.updated_at = func.current_timestamp()  # type: ignore[assignment]
                 return existing_course.course_id
             else:
                 course = Course(title=title, description=description, audience=audience, created_by_id=created_by)
@@ -74,7 +74,7 @@ class PostgresORMRepository:
                 course.description = str(template.get('learning_objectives', []))
                 course.audience = template.get('level', 'general')
                 course.status = status
-                course.updated_at = func.current_timestamp()
+                course.updated_at = func.current_timestamp()  # type: ignore[assignment]
                 # Clear existing chapters to prevent UniqueViolation when rebuilding a course
                 session.query(Chapter).filter_by(course_id=course.course_id).delete()
             else:
@@ -115,7 +115,7 @@ class PostgresORMRepository:
             syllabus = session.query(Syllabus).filter(Syllabus.course_id == course_id).order_by(Syllabus.syllabus_id.desc()).first()
             if syllabus:
                 syllabus.content = json.dumps(template)
-                syllabus.updated_at = func.current_timestamp()
+                syllabus.updated_at = func.current_timestamp()  # type: ignore[assignment]
             else:
                 syllabus = Syllabus(course_id=course_id, content=json.dumps(template))
                 session.add(syllabus)
@@ -131,7 +131,7 @@ class PostgresORMRepository:
             if run:
                 run.status = status
                 if status in ('completed', 'failed'):
-                    run.completed_at = func.current_timestamp()
+                    run.completed_at = func.current_timestamp()  # type: ignore[assignment]
     
     def get_course_status(self, course_id: int) -> Dict[str, Any]:
         with self.get_session() as session:
@@ -183,7 +183,7 @@ class PostgresORMRepository:
             course = session.query(Course).filter(Course.course_id == course_id).first()
             if course:
                 course.status = status
-                course.updated_at = func.current_timestamp()
+                course.updated_at = func.current_timestamp()  # type: ignore[assignment]
     
     def get_latest_error(self, course_id: int) -> Optional[str]:
         with self.get_session() as session:
@@ -235,7 +235,7 @@ class PostgresORMRepository:
     
     def cleanup_expired_sessions(self) -> int:
         with self.get_session() as session:
-            count = session.query(Session).filter(Session.expires_at < func.now()).delete()
+            count = session.query(SessionModel).filter(SessionModel.expires_at < func.now()).delete()
             return count
 
     def get_training_chapters(self, min_length: int = 500) -> List[tuple]:

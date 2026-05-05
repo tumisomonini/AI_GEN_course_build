@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Course Builder — Dashboard</title>
+  <link rel="stylesheet" href="Css/style.css">
+  <link rel="stylesheet" href="Css/dashboard.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🎓 AI Course Builder</h1>
+      <nav>
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="courses.html">Courses</a>
+        <a href="Syllabus.html">Syllabus</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="exports.html">Exports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h2>Dashboard</h2>
+        <button class="btn btn-primary" onclick="window.location.href='courses.html'">+ New Course</button>
+      </div>
+
+      <!-- System Health -->
+      <p class="section-title">System Health</p>
+      <div class="health-grid" id="health-grid">
+        <div class="health-card"><div class="health-dot unknown"></div><div><div class="health-label">Loading…</div></div></div>
+      </div>
+
+      <!-- Stats -->
+      <p class="section-title">Overview</p>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Courses</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="stat-completed">—</div></div>
+        <div class="stat-card"><div class="stat-label">Awaiting Approval</div><div class="stat-value" id="stat-pending">—</div></div>
+        <div class="stat-card"><div class="stat-label">Generating</div><div class="stat-value" id="stat-generating">—</div></div>
+      </div>
+
+      <!-- Quick Actions -->
+      <p class="section-title">Quick Actions</p>
+      <div class="quick-actions">
+        <a href="courses.html" class="btn btn-primary">📚 Manage Courses</a>
+        <a href="Syllabus.html" class="btn btn-secondary">📝 Generate Syllabus</a>
+        <a href="approvals.html" class="btn btn-secondary">✅ Review Approvals</a>
+        <a href="exports.html" class="btn btn-secondary">⬇️ Exports</a>
+      </div>
+
+      <!-- Recent Courses -->
+      <p class="section-title">Recent Courses</p>
+      <div id="recent-courses">
+        <div class="empty-state"><p>Loading recent courses…</p></div>
+      </div>
+    </div>
+  </main>
+
+  <footer><div class="container"><p>&copy; 2026 Agentic Course Generation Platform</p></div></footer>
+
+  <script src="JS/api.js"></script>
+  <script>
+    async function loadDashboard() {
+      // Health
+      try {
+        const h = await api.getHealth();
+        const grid = document.getElementById('health-grid');
+        const services = [
+          { key: 'postgres',      label: 'PostgreSQL',  val: h.postgres?.status },
+          { key: 'neo4j',         label: 'Neo4j',       val: h.neo4j?.status },
+          { key: 'astra',         label: 'AstraDB',     val: h.astra?.status },
+          { key: 'agents',        label: 'Agents',      val: h.agents === 'ready' ? 'ready' : 'degraded' },
+          { key: 'overall',       label: 'Overall',     val: h.status },
+        ];
+        grid.innerHTML = services.map(s => {
+          const cls = s.val === 'ready' || s.val === 'healthy' ? 'healthy' : (s.val ? 'degraded' : 'unknown');
+          return `<div class="health-card">
+            <div class="health-dot ${cls}"></div>
+            <div><div class="health-label">${s.label}</div><div class="health-sub">${s.val || 'unknown'}</div></div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        document.getElementById('health-grid').innerHTML = '<div class="health-card"><div class="health-dot down"></div><div><div class="health-label">Backend offline</div></div></div>';
+      }
+
+      // Recent courses + stats
+      try {
+        const data = await api.getCourses('');
+        const courses = data.results || [];
+        const statuses = courses.map(c => c.status || '');
+        document.getElementById('stat-total').textContent = courses.length;
+        document.getElementById('stat-completed').textContent = statuses.filter(s => s === 'completed').length;
+        document.getElementById('stat-pending').textContent = statuses.filter(s => s === 'awaiting_approval').length;
+        document.getElementById('stat-generating').textContent = statuses.filter(s => s.startsWith('generating')).length;
+
+        const container = document.getElementById('recent-courses');
+        if (!courses.length) {
+          container.innerHTML = '<div class="empty-state"><p>No courses yet. <a href="courses.html">Create one!</a></p></div>';
+          return;
+        }
+        container.innerHTML = courses.slice(0, 5).map(c => `
+          <div class="card" style="padding:1rem 1.5rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div>
+              <strong>${c.title || 'Untitled'}</strong>
+              <span style="margin-left:.75rem;" class="badge badge-${c.status}">${c.status || 'unknown'}</span>
+            </div>
+            <a href="courses.html" class="btn btn-sm btn-secondary">View</a>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('recent-courses').innerHTML = '<div class="empty-state"><p>Could not load courses.</p></div>';
+      }
+    }
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -35,6 +35,13 @@ class PostgresRepo:
     def close(self):
         self.repo.close()
     
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
     def init_schema(self):
         """Ensure schema is initialized."""
         self.repo.init_schema()

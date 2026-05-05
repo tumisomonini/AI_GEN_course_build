@@ -7,10 +7,12 @@ database = 'neo4j'
 driver = GraphDatabase.driver(uri, auth=(user, password))
 with driver.session(database=database) as session:
     r = session.run('MATCH (t:Topic) RETURN count(t) as c')
-    print('Local Topics:', r.single()['c'])
+    record = r.single()
+    print('Local Topics:', record['c'] if record else 0)
     r = session.run('MATCH ()-[:PREREQUISITE]->() RETURN count(*) as c')
-    print('Local PREREQ:', r.single()['c'])
+    record = r.single()
+    print('Local PREREQ:', record['c'] if record else 0)
     r = session.run('MATCH ()-[:RELATED_TO]->() RETURN count(*) as c')
-    print('Local RELATED_TO:', r.single()['c'])
+    record = r.single()
+    print('Local RELATED_TO:', record['c'] if record else 0)
 driver.close()
-

@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS chapters (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'draft',
-    UNIQUE(course_id, title)
+    UNIQUE(course_id, chapter_order)
 );
 
 CREATE TABLE IF NOT EXISTS syllabus (
@@ -180,6 +180,10 @@ CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
 CREATE INDEX IF NOT EXISTS idx_metrics_run_id ON metrics(run_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_agent_name ON metrics(agent_name);
 CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
+
+-- Partition logs table by date for scalability
+CREATE TABLE IF NOT EXISTS logs_daily PARTITION OF logs FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+ALTER TABLE logs SET (autovacuum_enabled = true);
         """
         with self.get_cursor() as cur:
             cur.execute(schema_sql)
@@ -235,7 +239,13 @@ CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
             for i, ch in enumerate(template.get('chapters', [])):
                 title = ch['title'] if isinstance(ch, dict) else str(ch)
                 cur.execute(
-                    "INSERT INTO chapters (course_id, title, content, chapter_order, status) VALUES (%s, %s, %s, %s, 'draft') ON CONFLICT (course_id, title) DO NOTHING",
+                    """
+                    INSERT INTO chapters (course_id, title, content, chapter_order, status)
+                    VALUES (%s, %s, %s, %s, 'draft')
+                    ON CONFLICT (course_id, chapter_order) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
                     (course_id, title, '', i + 1)
                 )
             cur.execute(

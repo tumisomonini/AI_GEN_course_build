@@ -103,9 +103,9 @@ def _build_config(preset_name: str, env_prefix: Optional[str] = None) -> Dict[st
     uri = sanitize_neo4j_uri(uri)
     return {
         "uri": uri,
-        "user": user,
+        "user": user or "neo4j",
         "password": password,
-        "database": database,
+        "database": database or "neo4j",
     }
 
 

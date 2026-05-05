@@ -15,8 +15,7 @@ pg_connected = False
 try:
     from Application.Ports.postgres_repo import PostgresRepo
     pg_repo_instance = PostgresRepo()
-    with pg_repo_instance.get_cursor() as cur:
-        cur.execute("SELECT 1")
+    pg_repo_instance.search_courses('')  # lightweight connectivity check
     pg_connected = True
     print('✅ Postgres connection established for metrics.')
 except Exception as e:
@@ -108,7 +107,7 @@ def plot_histograms(api_t, wf_t, tot_t):
 
 def plot_boxplot(api_t, wf_t):
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.boxplot([api_t, wf_t], tick_labels=['API', 'Workflow'])
+    ax.boxplot([api_t, wf_t], labels=['API', 'Workflow'])
     ax.set_title('Latency Boxplot Comparison')
     ax.set_ylabel('Seconds')
     plt.tight_layout()
@@ -142,36 +141,38 @@ def plot_ci_errorbars(api_stats, wf_stats, tot_stats):
 
 
 def query_pg_metrics():
-    """Query latest run metrics and overall summary from Postgres."""
+    """Query latest run metrics and overall summary from Postgres via ORM."""
     metrics = {}
     if not pg_connected or not pg_repo_instance:
         return metrics
 
     try:
-        with pg_repo_instance.get_cursor() as cur:
+        from Application.Infrastructure.relationalDB.models import Metric
+        from sqlalchemy import func as sa_func
+
+        orm = pg_repo_instance.repo  # underlying PostgresORMRepository
+        with orm.get_session() as session:
             # Latest run_id
-            cur.execute("SELECT MAX(run_id) FROM metrics")
-            row = cur.fetchone()
-            latest_run_id = row[0] if row and row[0] else None
+            latest_run_id = session.query(sa_func.max(Metric.run_id)).scalar()
 
             if latest_run_id:
-                cur.execute(
-                    "SELECT metric_name, value FROM metrics WHERE run_id = %s ORDER BY metric_id",
-                    (latest_run_id,)
-                )
-                latest_metrics = cur.fetchall()
+                rows = session.query(Metric.metric_name, Metric.value)\
+                              .filter(Metric.run_id == latest_run_id)\
+                              .order_by(Metric.metric_id).all()
                 metrics['latest_run_id'] = latest_run_id
-                metrics['latest'] = {name: float(val) for name, val in latest_metrics}
+                metrics['latest'] = {name: float(val) for name, val in rows}
 
             # Summary by metric_name
-            cur.execute(
-                """SELECT metric_name, AVG(value), STDDEV(value), COUNT(*)
-                   FROM metrics GROUP BY metric_name"""
-            )
-            summary = cur.fetchall()
+            summary_rows = session.query(
+                Metric.metric_name,
+                sa_func.avg(Metric.value),
+                sa_func.stddev(Metric.value),
+                sa_func.count(Metric.metric_id)
+            ).group_by(Metric.metric_name).all()
+
             metrics['summary'] = [
                 {'metric': name, 'mean': float(avg), 'std': float(std) if std else 0.0, 'count': int(cnt)}
-                for name, avg, std, cnt in summary
+                for name, avg, std, cnt in summary_rows
             ]
     except Exception as e:
         print(f'⚠️ PG metrics query failed: {e}')

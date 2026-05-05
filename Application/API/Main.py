@@ -94,12 +94,18 @@ async def lifespan(app: FastAPI):
         deps._neo4j_repo.close()
     print("✅ Shutdown complete")
 
+
 app = FastAPI(
     title="🚀 AI Course Builder API",
     description="Real scraping → RAG → AI course generation",
     version="2.0.0",
     lifespan=lifespan
 )
+
+from fastapi.middleware.gzip import GZipMiddleware  # Performance: Enable compression
+
+# Performance: GZip compression for large JSON responses (courses/syllabus)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Compliance: Restrict CORS origins in production
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
@@ -125,25 +131,30 @@ async def catch_exceptions_middleware(request: Request, call_next):
             content={"detail": f"Internal Server Error: {type(exc).__name__}", "message": str(exc)}
         )
 
-# Serve Pages/ statically under /pages only
-pages_path = Path(__file__).parent.parent.parent / "Pages"
-if pages_path.exists():
-    app.mount("/Pages", StaticFiles(directory=pages_path, html=True), name="pages")
-    print(f"✅ Pages served from {pages_path} at /Pages")
-
 app.include_router(syllabus_router, prefix="/syllabus", tags=["Syllabus"])
 app.include_router(courses_router, prefix="/courses", tags=["Courses"])
 app.include_router(session_router, prefix="/session", tags=["Session"])
 
-@app.get("/")
+@app.get("/health-check", include_in_schema=False)
 async def root():
-    """Redirect to workflow interface for agent-based course generation"""
-    return RedirectResponse(url="/Pages/workflow.html")
+    """Redirect root to frontend index"""
+    return RedirectResponse(url="/index.html")
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def get_robots():
     """Compliance: Prevent search engines from indexing API routes."""
     return "User-agent: *\nDisallow: /syllabus/\nDisallow: /courses/\nDisallow: /session/"
+
+# Static mounts MUST come after all API routes — mount("/") shadows everything registered after it
+pages_path = Path(__file__).parent.parent.parent / "Pages"
+if pages_path.exists():
+    app.mount("/Pages", StaticFiles(directory=pages_path, html=True), name="pages")
+    print(f"✅ Pages served from {pages_path} at /Pages")
+
+frontend_path = Path(__file__).parent.parent.parent / "Front_End"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+    print(f"✅ Frontend served from {frontend_path} at /")
 
 @app.websocket("/ws/health")
 async def websocket_health_check(websocket: WebSocket):
