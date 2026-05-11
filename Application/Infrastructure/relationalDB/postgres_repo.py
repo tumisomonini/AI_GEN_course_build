@@ -1,3 +1,4 @@
+import os
 from .postgres_orm_repo import PostgresORMRepository
 from psycopg2 import pool
 from typing import List, Dict, Optional, Any
@@ -6,6 +7,15 @@ from Domain.course import Chapter
 
 class PostgresRepository(PostgresORMRepository):
     def __init__(self, dbname: str, user: str, password: str, host: str = "localhost", port: int = 5432):
+        # Sync environment variables so the parent ORM repository uses the same connection parameters
+        os.environ['POSTGRES_DBNAME'] = dbname
+        os.environ['POSTGRES_USER'] = user
+        os.environ['POSTGRES_PASSWORD'] = password
+        os.environ['POSTGRES_HOST'] = host
+        os.environ['POSTGRES_PORT'] = str(port)
+        
+        super().__init__()
+        
         self.conn_params = {
             'dbname': dbname,
             'user': user,
@@ -181,9 +191,24 @@ CREATE INDEX IF NOT EXISTS idx_metrics_run_id ON metrics(run_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_agent_name ON metrics(agent_name);
 CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
 
--- Partition logs table by date for scalability
-CREATE TABLE IF NOT EXISTS logs_daily PARTITION OF logs FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
-ALTER TABLE logs SET (autovacuum_enabled = true);
+-- Partition logs table by date for scalability (optional)
+    -- Some existing DBs (including some test DBs) may have a non-partitioned `logs` table.
+    -- Attempting to attach a partition then fails with: "logs" is not partitioned.
+    --
+    -- The app works fine without partitions; streaming reads from the base `logs` table.
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM pg_class c
+            JOIN pg_partitioned_table pt ON pt.partrelid = c.oid
+            WHERE c.relname = 'logs'
+        ) THEN
+            CREATE TABLE IF NOT EXISTS logs_daily PARTITION OF logs
+              FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+        END IF;
+        ALTER TABLE logs SET (autovacuum_enabled = true);
+    END $$;
         """
         with self.get_cursor() as cur:
             cur.execute(schema_sql)
@@ -223,9 +248,12 @@ ALTER TABLE logs SET (autovacuum_enabled = true);
         import json
         status = template.get('status', 'draft')
         with self.get_cursor() as cur:
+            # Ensure ON CONFLICT uses a matching UNIQUE constraint.
+            # The schema defines `courses.title` as UNIQUE, so this upsert is valid.
             cur.execute(
                 """
-                INSERT INTO courses (title, description, audience, status) VALUES (%s, %s, %s, %s)
+                INSERT INTO courses (title, description, audience, status)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (title) DO UPDATE SET
                     description = EXCLUDED.description,
                     audience = EXCLUDED.audience,
@@ -238,14 +266,15 @@ ALTER TABLE logs SET (autovacuum_enabled = true);
             course_id = cur.fetchone()[0]
             for i, ch in enumerate(template.get('chapters', [])):
                 title = ch['title'] if isinstance(ch, dict) else str(ch)
+                # Only safe to use ON CONFLICT if a unique constraint exists on (course_id, chapter_order).
+                # If schema migrations haven't created it, this statement will fail.
                 cur.execute(
                     """
-                    INSERT INTO chapters (course_id, title, content, chapter_order, status)
-                    VALUES (%s, %s, %s, %s, 'draft')
-                    ON CONFLICT (course_id, chapter_order) DO UPDATE SET
-                        title = EXCLUDED.title,
-                        updated_at = CURRENT_TIMESTAMP
-                    """,
+INSERT INTO chapters (course_id, title, content, chapter_order, status)
+VALUES (%s, %s, %s, %s, 'draft')
+ON CONFLICT (course_id, chapter_order) DO UPDATE SET
+    title = EXCLUDED.title, content = EXCLUDED.content, status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+""",
                     (course_id, title, '', i + 1)
                 )
             cur.execute(
@@ -274,7 +303,15 @@ ALTER TABLE logs SET (autovacuum_enabled = true);
             )
             # 2. Sync chapters table (delete old draft placeholders and insert new ones)
             cur.execute("DELETE FROM chapters WHERE course_id = %s AND status = 'draft'", (course_id,))
-            for i, chapter_title in enumerate(template.get('chapters', [])):
+            for i, ch in enumerate(template.get('chapters', [])):
+                # Accept multiple template chapter schemas:
+                #   1) ["Intro", "Setup"]
+                #   2) [{"title": "Intro"}, {"title": "Setup"}]
+                #   3) [{"title": "Intro", "content": "..."}, ...]
+                if isinstance(ch, dict):
+                    chapter_title = ch.get('title', '')
+                else:
+                    chapter_title = str(ch)
                 cur.execute(
                     """
                     INSERT INTO chapters (course_id, title, content, chapter_order, status)
@@ -440,5 +477,6 @@ ALTER TABLE logs SET (autovacuum_enabled = true);
 
     def close(self):
         """Close the database connection."""
+        super().close()
         if self.pool:
             self.pool.closeall()

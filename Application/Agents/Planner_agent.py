@@ -9,11 +9,11 @@ from Domain.knowledge_graphy import KnowledgeGraph
 class PlannerAgent:
     def __init__(self, repository: Neo4jRepository):
         self._cached_graph: Optional[nx.Graph] = None
-        if repository is None:
-            self.graph_repo = None
-        else:
-            self.graph_repo = repository
-        self.database = self.graph_repo.database if self.graph_repo else "neo4j"
+        self.graph_repo = repository
+        self.database = "neo4j" # Default value
+        if self.graph_repo:
+            # Only try to access .database if graph_repo is not None
+            self.database = self.graph_repo.database
         self.kg = KnowledgeGraph(self.graph_repo, self.database) if self.graph_repo else None
 
     def generate_syllabus(self, topics: List[str]) -> List[str]:

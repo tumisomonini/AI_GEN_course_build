@@ -20,20 +20,22 @@ class ReviewerAgent:
             self._init_client()
 
     def _init_client(self):
-        """Initialize LLM client with priority: Local -> OpenRouter -> Mistral"""
+        """Initialize LLM client with priority: Local -> Mistral -> OpenRouter"""
         local_url = os.getenv("LOCAL_LLM_URL")
         if local_url:
             if self._setup_client(local_url, "local-token", "LOCAL_LLM_MODEL", "unsloth-llama-3-8b"):
                 return
 
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
-        if openrouter_key:
-            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "OPENROUTER_MODEL", "openai/gpt-4o-mini"):
-                return
-
+        # Try Mistral first
         mistral_key = os.getenv("MISTRAL_API_KEY")
         if mistral_key:
             if self._setup_client("https://api.mistral.ai/v1", mistral_key, "MISTRAL_MODEL", "mistral-small-latest"):
+                return
+
+        # Fallback to OpenRouter
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_key:
+            if self._setup_client("https://openrouter.ai/api/v1", openrouter_key, "OPENROUTER_MODEL", "openai/gpt-4o-mini"):
                 return
 
         logger.warning("ReviewerAgent initialized without LLM client (Safety/Review checks will be bypassed)")
@@ -59,13 +61,15 @@ class ReviewerAgent:
             raise ValueError("No LLM client initialized")
         return await self.client.chat.completions.create(**kwargs)
 
-    async def validate_content_with_llm(self, content: str, topic: str) -> Dict[str, Any]:
+    async def validate_content_with_llm(self, content: str, topic: str, source_chunks: Optional[List[str]] = None) -> Dict[str, Any]:
         """Uses LLM to provide a semantic critique of the generated content."""
         if not self.client:
             return {"score": 0.8, "feedback": "LLM client not available, skipping semantic check."}
         
+        sources_summary = "\n".join([f"- {s[:200]}..." for s in source_chunks]) if source_chunks else "No sources."
+
         prompt = (
-            f"Critique this educational content for the topic '{topic}'.\n"
+            f"Critique this educational content for the topic '{topic}' against these sources:\n{sources_summary}\n"
             "Return ONLY a JSON object with keys: 'accuracy' (0-1), 'depth' (0-1), 'clarity' (0-1), and 'feedback' (string).\n\n"
             f"Content: {content[:2000]}"
         )
@@ -152,7 +156,7 @@ class ReviewerAgent:
         if not source_chunks:
             return {"score": 1.0, "reason": "No sources provided for grounding check."}
             
-        sources_text = "\n".join([f"Source {i}: {s[:1500]}" for i, s in enumerate(source_chunks[:8])])
+        sources_text = "\n".join([f"CHUNK {i}: {s[:1500]}" for i, s in enumerate(source_chunks[:8])])
         prompt = (
             "Act as a RAG Quality Auditor. Analyze the content against the provided sources.\n"
             "1. Faithfulness: Are the claims supported by sources?\n"

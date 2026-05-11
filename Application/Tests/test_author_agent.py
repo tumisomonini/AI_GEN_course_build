@@ -2,9 +2,9 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from dotenv import load_dotenv
 load_dotenv()
-import sys
 import os
-# sys.path.insert(0, os.path.abspath('../../'))  # Relative path hack - fixed with absolute import
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from Application.Agents.Author_agent import AuthorAgent
 from Domain.course import Chapter
 
@@ -54,4 +54,3 @@ async def test_author_parallel(mock_manager, mock_openai_client):
         for chapter in chapters:
             assert isinstance(chapter, Chapter)
             assert "Generated content" in chapter.content
-

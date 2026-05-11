@@ -38,7 +38,8 @@ _neo4j_repo = None
 _astra_repo = None
 
 def init_neo4j_singleton():
-    """Centralized Neo4j initialization: Aura cloud first (if .env configured), fallback local Docker."""
+    """Centralized Neo4j initialization: prefer local Docker Neo4j first, then Aura cloud fallback."""
+
     global _neo4j_repo
 
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -65,7 +66,19 @@ def init_neo4j_singleton():
         finally:
             driver.close()
 
-    # Cloud Aura first if configured
+    # Local Docker first
+    is_docker = os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER")
+    local_uri = "bolt://neo4j:7687" if is_docker else "bolt://localhost:7687"
+    local_user, local_pass, local_db = "neo4j", "password", "neo4j"
+    print(f"🔍 Testing local Neo4j (Docker): {local_uri}")
+    try:
+        _neo4j_repo = test_connection(local_uri, local_user, local_pass, local_db)
+        print("✅ Local Neo4j connected")
+        return _neo4j_repo
+    except Exception as local_err:
+        print(f"⚠️ Local Neo4j failed: {local_err}. Falling back to Aura cloud...")
+
+    # Cloud Aura fallback
     aura_uri = os.getenv('NEO4J_URI', '').strip()
     if '.neo4j.io' in aura_uri:
         aura_user = os.getenv('NEO4J_USERNAME', 'neo4j')
@@ -78,24 +91,12 @@ def init_neo4j_singleton():
             print("✅ Aura Neo4j connected & set as default")
             return _neo4j_repo
         except Exception as cloud_err:
-            print(f"⚠️ Aura failed ({cloud_err}). Falling back to local Docker...")
+            print(f"❌ Aura failed ({cloud_err}).")
 
-    # Local Docker fallback
-    is_docker = os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER")
-    local_uri = "bolt://neo4j:7687" if is_docker else "bolt://localhost:7687"
-    local_user, local_pass, local_db = "neo4j", "password", "neo4j"
-    print(f"🔍 Testing local Neo4j (Docker): {local_uri}")
-    try:
-        _neo4j_repo = test_connection(local_uri, local_user, local_pass, local_db)
-        print("✅ Local Neo4j connected")
-        return _neo4j_repo
-    except Exception as local_err:
-        print(f"❌ Local Neo4j failed: {local_err}")
-        print("💡 Fix: cd Application/Docker && docker compose up -d neo4j")
-        _neo4j_repo = None  # Graceful degrade
-        return None
-
-    return _neo4j_repo
+    print("❌ Neo4j connection failed: neither local Docker nor Aura reachable")
+    _neo4j_repo = None
+    return None
+    # If successful, _neo4j_repo would have been set and returned earlier.
 
 def init_postgres_singleton() -> Optional[PostgresRepo]:
     """Centralized Postgres initialization with schema enforcement."""
@@ -141,16 +142,14 @@ def get_neo4j_repo() -> Generator[Optional[Neo4jRepoImpl], None, None]:
         pass  # Close in lifespan
 
 def init_astra_singleton():
-    """Centralized AstraDB initialization with retry."""
+    """Centralized AstraDB initialization with retry. MANDATORY."""
     global _astra_repo
     if _astra_repo is not None:
         return _astra_repo
 
-    # Fast-fail if credentials are missing to avoid noisy retries
+    # Fail-fast if credentials are missing — Astra is now mandatory
     if not os.getenv('ASTRA_DB_APPLICATION_TOKEN') or not os.getenv('ASTRA_DB_ID'):
-        print("⚠️ AstraDB skipped: ASTRA_DB_APPLICATION_TOKEN and/or ASTRA_DB_ID not set.")
-        _astra_repo = None
-        return _astra_repo
+        raise ValueError("❌ AstraDB is MANDATORY: Set ASTRA_DB_APPLICATION_TOKEN and ASTRA_DB_ID env vars")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
     def test_astra():
@@ -160,12 +159,11 @@ def init_astra_singleton():
         return repo
 
     try:
-        print("🔍 Initializing AstraDB...")
+        print("🔍 Initializing AstraDB (mandatory)...")
         _astra_repo = test_astra()
         print("✅ AstraDB connected")
     except Exception as e:
-        print(f"⚠️ AstraDB failed: {e}. Vector RAG disabled.")
-        _astra_repo = None
+        raise ValueError(f"❌ AstraDB initialization failed (mandatory): {e}")
     return _astra_repo
 
 def get_astra_repo() -> Generator[Optional[AstraRepo], None, None]:
@@ -179,18 +177,28 @@ def get_astra_repo() -> Generator[Optional[AstraRepo], None, None]:
         pass
 
 def get_vector_store():
-    """Get vector store for RAG (Astra first, local fallback if down)."""
-    repo = init_astra_singleton()
-    if repo:
-        return repo.vector_store
-    print("⚠️ Astra unavailable, attempting local vector store fallback...")
+    """Get vector store for RAG.
+
+    Preference order:
+      1) AstraDB (if configured)
+      2) ChromaDB local embedded fallback
+    """
     try:
-        from Application.Infrastructure.vectorDb.Astra_vector_store import get_astra_vector_store
-        local_store = get_astra_vector_store()
+        repo = init_astra_singleton()
+        if repo:
+            return repo.vector_store
+    except Exception as e:
+        logger.warning(f"Astra init failed, falling back to local vector store: {e}")
+
+    print("⚠️ Vector store: using local ChromaDB fallback")
+    try:
+        from Application.Infrastructure.vectorDb.Chroma_vector_store import get_chroma_vector_store
+        local_store = get_chroma_vector_store()
         if local_store:
             return local_store
     except Exception as e:
-        logger.warning(f"Local vector store fallback failed: {e}")
+        logger.warning(f"Chroma fallback failed: {e}")
+
     return None
 
 
@@ -238,7 +246,7 @@ def check_all_dbs():
         results['neo4j'] = f'error: {str(e)}'
         raise Exception(f"Critical: Neo4j unhealthy - {e}")
 
-    # Astra (optional — warn but don't raise)
+    # Astra (MANDATORY — raise if unavailable)
     try:
         if _astra_repo is None:
             init_astra_singleton()
@@ -246,11 +254,10 @@ def check_all_dbs():
             results['astra'] = 'healthy'
             print("✅ AstraDB health OK")
         else:
-            results['astra'] = 'skipped (not configured)'
-            print("⚠️ AstraDB skipped (not configured)")
+            raise ValueError("AstraDB vector store not initialized")
     except Exception as e:
-        results['astra'] = f'warning: {str(e)}'
-        print(f"⚠️ AstraDB health check warning: {e}")
+        results['astra'] = f'error: {str(e)}'
+        raise Exception(f"Critical: AstraDB unhealthy (mandatory) - {e}")
 
     print(f"🌐 DBs checked: {results}")
     return results

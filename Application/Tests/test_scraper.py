@@ -37,10 +37,10 @@ def test_cleaner_raw_text():
         
     Module 1: Introduction
         
-    Normal content line
-    Short
+    Normal content line.
+    Shrt
     VERYLONGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG line outlier
-        
+
     Duplicate
     Duplicate
     Duplicate
@@ -97,7 +97,8 @@ def test_scrape_relevant_syllabi_parallel(monkeypatch):
     assert all('source_url' in entry for entry in result)
     for entry in result:
         if '_cleaning_stats' in entry:
-            raw_stats = entry['_cleaning_stats']['raw']
-            assert raw_stats['lines_kept'] > 0 # Should keep some lines
-            assert (raw_stats['removed_duplicate'] + raw_stats['removed_junk'] + raw_stats['removed_short'] + raw_stats['removed_long']) >= 0 # Allow no removal for mock data
+            raw_stats = entry['_cleaning_stats']['raw'] # Access the 'raw' key
+            assert raw_stats['lines_kept'] > 0
+            assert raw_stats['removed_duplicate'] >= 1 # Expect at least one duplicate removed
+            assert raw_stats['removed_junk'] >= 1 # Expect at least one junk line removed
     assert any(entry['source_url'].endswith('.pdf') for entry in result)

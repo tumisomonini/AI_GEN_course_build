@@ -30,7 +30,7 @@ class InlineScraper:
         self._scraper = get_scraper()
 
     async def scrape_relevant_sources(self, topic: str) -> Dict:
-        results = self._scraper.search_and_scrape(topic, max_results=3)
+        results = await self._scraper.search_and_scrape_async(topic, max_results=3)
         valid = [r for r in results if "error" not in r]
         return {
             "total_sources": len(valid),
@@ -243,7 +243,7 @@ async def resume_course_generation(
     }
 
 
-def outline_generation_task(
+async def outline_generation_task(
     request: CourseGenerateRequest, course_id: int, run_id: int
 ):
     """Background task to handle template generation with status tracking"""
@@ -252,7 +252,7 @@ def outline_generation_task(
         from Application.Workflows.syllabus_workflow import create_outline_workflow
 
         course_title = request.title or request.topic or ""
-        template = create_outline_workflow(
+        template = await create_outline_workflow(
             course_title, request.level, request.duration_months, run_id=run_id
         )
 
@@ -360,6 +360,33 @@ async def full_content_workflow(course_id: int, run_id: int):
             ]
 
         repo.save_full_course_chapters(course_id, chapters_list)
+
+        # ✅ Finish end-to-end course ↔ topics linking where course_id exists (endpoint layer)
+        try:
+            from Application.Infrastructure.graphDb.neo4j_repo import Neo4jNeomodelRepository
+            from Application.API.dependencies import sanitize_neo4j_uri
+
+            neo_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            neo_user = os.getenv("NEO4J_USERNAME", "neo4j")
+            neo_pass = os.getenv("NEO4J_PASSWORD", "password")
+            neo_db = os.getenv("NEO4J_DATABASE", "neo4j")
+            neo_uri = sanitize_neo4j_uri(neo_uri)
+
+            neo_repo = Neo4jNeomodelRepository(neo_uri, neo_user, neo_pass, neo_db)
+            topic_names = [ch.get("title", "") for ch in chapters_list if isinstance(ch, dict) and ch.get("title")]
+            topic_names = [t for t in topic_names if t]
+
+            neo_repo.link_topics_to_course(
+                course_id=course_id,
+                title=title,
+                topic_names=topic_names,
+            )
+            neo_repo.close()
+            repo.log_message(run_id, "Neo4j", f"Linked course↔topics for course_id={course_id}", "info")
+        except Exception as link_e:
+            # Linking is best-effort; do not fail full generation if Neo4j is down.
+            repo.log_message(run_id, "Neo4j", f"Course↔topics linking failed: {link_e}", "warning")
+
         repo.log_message(run_id, "assembler", "Course assembly complete", "info")
         repo.update_course_status(course_id, "completed")
         repo.update_run_status(run_id, "completed")
@@ -439,6 +466,59 @@ async def stream_course_updates(
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+@router.get("/{course_id}/generation-content")
+async def get_generation_content(
+    course_id: int, repo: PostgresRepo = Depends(get_postgres_repo)
+):
+    """Return best-effort generation payload for frontend display.
+
+    During generation, the full payload may not yet be persisted.
+    This endpoint returns:
+      - status (draft/generating/awaiting_approval/completed/failed)
+      - template (if available)
+      - chapters: only chapters with non-empty content (if available)
+
+    Frontend can poll this endpoint while SSE streams logs.
+    """
+    status_info = repo.get_course_status(course_id)
+    if not status_info:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    review_data = None
+    try:
+        review_data = repo.get_course_review(course_id)
+    except Exception:
+        review_data = None
+
+    template = {}
+    chapters = []
+
+    if isinstance(review_data, dict):
+        template = review_data.get("template") or {}
+        chapters = review_data.get("chapters") or []
+
+    # Best-effort: strip empty chapter content
+    filtered_chapters = []
+    for ch in chapters if isinstance(chapters, list) else []:
+        if not isinstance(ch, dict):
+            continue
+        content = ch.get("content")
+        if isinstance(content, str) and content.strip():
+            filtered_chapters.append(ch)
+        elif ch.get("title") and content is None:
+            # keep placeholder titles if backend stores empty content as null
+            filtered_chapters.append(ch)
+
+    return {
+        "course_id": course_id,
+        "status": status_info.get("status", "unknown"),
+        "template": template if isinstance(template, dict) else {},
+        "chapters": filtered_chapters,
+        "generated_chapter_count": len(filtered_chapters),
+        "total_chapter_count": len(chapters) if isinstance(chapters, list) else 0,
+    }
+
+
 @router.get("/{course_id}/course-review")
 async def get_course_review(
     course_id: int, repo: PostgresRepo = Depends(get_postgres_repo)
@@ -447,6 +527,7 @@ async def get_course_review(
     if not review_data:
         raise HTTPException(status_code=404, detail="Course not found")
     return review_data
+
 
 
 @router.get("/{course_id}/download")

@@ -124,5 +124,13 @@
 
   <script src="JS/api.js"></script>
   <script src="JS/courses.js"></script>
+  <script>
+    // Ensure legacy inline onclick handlers don't break modal close.
+    function closeCreateModal() {
+      const modal = document.getElementById('course-modal');
+      if (modal) modal.style.display = 'none';
+    }
+  </script>
+
 </body>
 </html>

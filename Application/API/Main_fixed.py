@@ -39,11 +39,13 @@ async def lifespan(app: FastAPI):
     # Use centralized init for consistency and schema enforcement
     deps.init_postgres_singleton()
     deps.init_neo4j_singleton()
+    # Initialize Astra (MANDATORY)
     try:
         deps.init_astra_singleton()
         print("✅ AstraDB ready")
     except Exception as e:
-        print(f"⚠️ Astra optional failed: {e}")
+        print(f"❌ AstraDB mandatory failed: {e}")
+        raise
     
     # Auto-populate Neo4j sample data using the shared driver
     if deps._neo4j_repo:
@@ -58,9 +60,7 @@ async def lifespan(app: FastAPI):
                     target_db = "neo4j"
 
             kg = KnowledgeGraph(deps._neo4j_repo, target_db)
-            kg.add_topic("Python Basics", "Fundamental syntax and data types")
-            kg.add_topic("Data Structures", "Lists, dicts, sets")
-            kg.add_prerequisite("Data Structures", "Python Basics")
+            # Removed hardcoded topic seeding
             print("✅ Neo4j populated with sample KG data")
         except Exception as e:
             print(f"⚠️ Neo4j population skipped: {e}")
@@ -142,7 +142,7 @@ def get_robots():
 # Static mounts MUST come after all API routes — mount("/") shadows everything registered after it
 pages_path = Path(__file__).parent.parent.parent / "Pages"
 if pages_path.exists():
-    app.mount("/Pages", StaticFiles(directory=pages_path, html=True), name="pages")
+    app.mount("/Front_End", StaticFiles(directory=frontend_path, html=True), name="Frontend")
     print(f"✅ Pages served from {pages_path} at /Pages")
 
 frontend_path = Path(__file__).parent.parent.parent / "Front_End"
@@ -208,4 +208,4 @@ async def health():
         'pipeline': 'integrated'
     }
 
-print("🎓 Real course builder live at http://localhost:8000/Pages/workflow.html")
+print("🎓 Real course builder live at http://localhost:8000/Pages/index.html")

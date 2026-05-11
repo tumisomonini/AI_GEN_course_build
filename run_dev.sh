@@ -16,4 +16,6 @@ uvicorn Application.API.Main_fixed:app \
   --port 8000 \
   --reload \
   --reload-dir "$ROOT/Application" \
-  --reload-dir "$ROOT/Domain"
+  --reload-dir "$ROOT/Domain" \
+  --reload-dir "$ROOT/Pages" \
+  --reload-dir "$ROOT/Front_End"

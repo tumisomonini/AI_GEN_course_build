@@ -26,4 +26,5 @@ datasets
 torch
 bitsandbytes
 langchain-astradb>=0.2.0
+httpx
 pytest-cov

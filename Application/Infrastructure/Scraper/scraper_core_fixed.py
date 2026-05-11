@@ -10,6 +10,12 @@ import asyncio
 import concurrent.futures
 import requests
 import redis
+try:
+    import httpx
+    _HTTPX_AVAILABLE = True
+except ImportError:
+    httpx = None  # type: ignore[assignment]
+    _HTTPX_AVAILABLE = False
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
@@ -32,6 +38,8 @@ if _ENV_PATH.exists():
 
 
 class Scraper:
+    # Class-level defaults so tests can monkeypatch attributes on the type.
+    redis_client = None
     """
     Stateful scraper that initializes reusable resources on instantiation.
 
@@ -130,6 +138,27 @@ class Scraper:
         reader = PdfReader(io.BytesIO(response.content))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
 
+    def _fetch_pdf_bytes_sync(self, url: str) -> bytes:
+        response = self.session.get(url, timeout=self.timeout, headers={"User-Agent": self.user_agent})
+        response.raise_for_status()
+        return response.content
+
+    async def _fetch_pdf_bytes(self, url: str) -> bytes:
+        if _HTTPX_AVAILABLE and httpx is not None:
+            async with httpx.AsyncClient(timeout=self.timeout, headers={"User-Agent": self.user_agent}) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.content
+        return await asyncio.to_thread(self._fetch_pdf_bytes_sync, url)
+
+    async def scrape_pdf_async(self, url: str) -> str:
+        """Async wrapper for PDF scraping."""
+        pdf_bytes = await self._fetch_pdf_bytes(url)
+        from pypdf import PdfReader
+        import io
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+
     async def scrape_technical_website_async(self, url: str) -> Dict[str, Any]:
         """Async robust scraper for any technical website."""
         if 'wikipedia.org' in url.lower():
@@ -187,7 +216,9 @@ class Scraper:
 
         try:
             search_query = f'{course_title} course syllabus topics outline'
-            results = list(_DDGS().text(search_query, max_results=max_results))
+            search_cls = _DDGS
+            assert search_cls is not None
+            results = await asyncio.to_thread(lambda: list(search_cls().text(search_query, max_results=max_results)))
         except Exception as e:
             return [{'error': f'DDG search failed: {e}', 'quality_score': 0}]
 
@@ -196,7 +227,7 @@ class Scraper:
             source_title = result.get('title', 'Unknown')
             try:
                 if 'pdf' in url.lower():
-                    raw = await asyncio.get_event_loop().run_in_executor(None, self.scrape_pdf, url)
+                    raw = await self.scrape_pdf_async(url)
                 else:
                     raw = await self.scrape_web_async(url)
                 cleaned_raw, raw_stats = clean_raw_text(raw)

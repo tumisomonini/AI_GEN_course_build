@@ -3,24 +3,25 @@ import sys
 import os
 import uuid
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))) # Project root
 
-from Infrastructure.relationalDB.postgres_repo import PostgresRepository
-
-DB_PARAMS = {
-    "dbname": "ai_gen_db",
-    "user": "postgres",
-    "password": "password123",
-    "host": "localhost",
-    "port": 5433,
-}
+from Application.Ports.postgres_repo import PostgresRepo
+from Application.API.dependencies import get_postgres_repo
 
 
 @pytest.fixture(scope="module")
 def repo():
-    r = PostgresRepository(**DB_PARAMS)
-    yield r
-    r.close()
+    """Provides the shared PostgresRepo instance for tests."""
+    repo_gen = get_postgres_repo()
+    repo_instance = next(repo_gen)  # Get the repository instance
+    if repo_instance is None:
+        pytest.skip("Postgres connection not available for testing.")
+    repo_instance.init_schema() # Ensure schema is up-to-date for tests
+    yield repo_instance
+    try:
+        repo_instance.close()
+    except Exception as e:
+        print(f"Warning: Error closing test_repo in test_postgres_repo: {e}")
 
 
 @pytest.fixture(autouse=True)

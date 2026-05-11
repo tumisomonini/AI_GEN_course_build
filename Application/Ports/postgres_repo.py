@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from Application.Infrastructure.relationalDB.postgres_orm_repo import PostgresORMRepository
+from Application.Infrastructure.relationalDB.postgres_repo import PostgresRepository
 
 load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
@@ -21,7 +21,7 @@ class PostgresRepo:
         user = os.getenv('POSTGRES_USER', 'postgres')
         password = os.getenv('POSTGRES_PASSWORD', 'password123')
         
-        self.repo = PostgresORMRepository()
+        self.repo = PostgresRepository(dbname, user, password, host, port)
         print(f"PostgresRepo connected: {host}:{port}/{dbname}")
     
     def ensure_schema(self):

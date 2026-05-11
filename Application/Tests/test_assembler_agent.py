@@ -1,7 +1,7 @@
 import pytest
 import sys
 import os
-# sys.path.insert(0, os.path.abspath('../../'))  # Fixed with absolute import
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from Application.Agents.Assembler_agent import AssemblerAgent
 from datetime import datetime
 
@@ -17,6 +17,12 @@ def test_assembler_markdown():
 def test_assembler_docx():
     assembler = AssemblerAgent()
     chapters = [{'title': 'Ch1', 'content': 'Content1'}]
-    docx_content = assembler.export_to_docx(chapters, 'test_course.docx')
-    assert '# test course' in docx_content
-
+    test_filename = 'test_course_output.docx'
+    if os.path.exists(test_filename):
+        os.remove(test_filename) # Ensure clean slate
+    
+    returned_filename = assembler.export_to_docx(chapters, test_filename)
+    assert returned_filename == test_filename
+    assert os.path.exists(test_filename)
+    assert os.path.getsize(test_filename) > 0 # Check if file has content
+    os.remove(test_filename) # Clean up generated file

@@ -1,5 +1,8 @@
 import pytest
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from Application.API.dependencies import check_all_dbs, _postgres_repo, _neo4j_repo, init_neo4j_singleton, init_postgres_singleton
 
 @pytest.fixture(scope='session')
@@ -52,7 +55,7 @@ def test_neo4j_singleton():
     global _neo4j_repo
     if _neo4j_repo is None:
         init_neo4j_singleton()
-    if _neo4j_repo is None:
+    if _neo4j_repo is None: # If init_neo4j_singleton failed, skip the test
         pytest.skip('Neo4j not available - local Docker may not be running')
     assert _neo4j_repo is not None
     assert hasattr(_neo4j_repo, 'driver')

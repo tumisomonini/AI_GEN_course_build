@@ -10,16 +10,16 @@ load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 
 def initialize_real_agents():
     """Initialize agents with production settings"""
-    from Application.API.dependencies import sanitize_neo4j_uri, _postgres_repo, _neo4j_repo, get_vector_store
+    from Application.API.dependencies import (
+        init_postgres_singleton, 
+        init_neo4j_singleton, 
+        get_triple_db_manager
+    )
     
-    # Use pre-initialized repos from lifespan to avoid redundant connection failures
-    repo = _postgres_repo
-    if repo is None:
-        print("⚠️ Warning: AuthorAgent initialized without Postgres logging (Repo Down)")
-
-    vector_store = get_vector_store()
-    if vector_store is None:
-        print("⚠️ Warning: AuthorAgent initialized without RAG capabilities (Astra Down)")
+    # Ensure core domain repositories and the integrated manager are initialized
+    repo = init_postgres_singleton()
+    neo4j_repo = init_neo4j_singleton()
+    manager = get_triple_db_manager()
 
     # Initialize real agents
     from Application.Agents.Planner_agent import PlannerAgent
@@ -27,14 +27,20 @@ def initialize_real_agents():
     from Application.Agents.Reviewer_agent import ReviewerAgent
     from Application.Agents.Assembler_agent import AssemblerAgent
 
-    # Reuse the already-connected Neo4j singleton (local Docker fallback already resolved)
-    neo4j_repo = _neo4j_repo
-    if neo4j_repo is None:
-        print("⚠️ Warning: PlannerAgent initialized without Neo4j KG (Neo4j Down)")
+    # Safe initialization for PlannerAgent to prevent AttributeError on .database access
+    planner_agent = None
+    if neo4j_repo:
+        try:
+            planner_agent = PlannerAgent(neo4j_repo)
+        except Exception as e:
+            print(f"❌ Failed to initialize PlannerAgent: {e}")
+            planner_agent = None
+    else:
+        print("⚠️ Warning: PlannerAgent will be unavailable (Neo4j Down)")
 
     agents = {
-        "planner": PlannerAgent(neo4j_repo),
-        "author": AuthorAgent(manager=None, repo=repo, kg=None),
+        "planner": planner_agent,
+        "author": AuthorAgent(manager=manager, repo=repo),
         "reviewer": ReviewerAgent(),
         "assembler": AssemblerAgent()
     }

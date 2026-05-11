@@ -33,28 +33,38 @@ class TripleDBManager:
             from Application.API.dependencies import init_postgres_singleton
             instance.pg = init_postgres_singleton()
 
-            # Neo4j: try env credentials first, fallback to local hardcoded on auth failure
-            neo_uri = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
-            neo_user = os.getenv('NEO4J_USERNAME', 'neo4j')
-            neo_pass = os.getenv('NEO4J_PASSWORD', 'password')
-            neo_db = os.getenv('NEO4J_DATABASE', 'neo4j')
-
+            # Neo4j: prefer the centralized singleton init (Aura-first + fallback)
             try:
-                instance.neo = Neo4jRepoImpl(neo_uri, neo_user, neo_pass, neo_db)
-            except Exception as e:
-                if 'localhost' in neo_uri or '127.0.0.1' in neo_uri:
-                    print(f"⚠️ Neo4j auth failed with env credentials ({e}), retrying with local defaults...")
-                    instance.neo = Neo4jRepoImpl('bolt://localhost:7687', 'neo4j', 'password', 'neo4j')
-                else:
-                    raise
+                from Application.API.dependencies import init_neo4j_singleton
 
-            # Astra: optional — don't crash the whole app if Astra is unavailable
+                instance.neo = init_neo4j_singleton()
+            except Exception as e:
+                # As a last resort, attempt direct construction with env creds.
+                neo_uri = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
+                neo_user = os.getenv('NEO4J_USERNAME', 'neo4j')
+                neo_pass = os.getenv('NEO4J_PASSWORD', 'password')
+                neo_db = os.getenv('NEO4J_DATABASE', 'neo4j')
+
+                try:
+                    instance.neo = Neo4jRepoImpl(neo_uri, neo_user, neo_pass, neo_db)
+                except Exception as e2:
+                    # If local, retry hardcoded defaults.
+                    if 'localhost' in neo_uri or '127.0.0.1' in neo_uri:
+                        print(f"⚠️ Neo4j auth failed ({e2}), retrying with local defaults...")
+                        instance.neo = Neo4jRepoImpl('bolt://localhost:7687', 'neo4j', 'password', 'neo4j')
+                    else:
+                        raise
+
+
+
+            # Astra: OPTIONAL for test environments.
+            # Full vector RAG requires Astra, but most unit tests only need Postgres+Neo4j.
             try:
                 instance.astra = AstraRepo()
                 logger.info("✅ AstraDB connected in TripleDBManager")
             except Exception as e:
-                print(f"⚠️ AstraDB initialization failed: {e}. Vector RAG will be disabled.")
                 instance.astra = None
+                logger.warning(f"⚠️ AstraDB init failed (optional): {e}")
 
             if instance.neo:
                 instance.kg = KnowledgeGraph(instance.neo, os.getenv('NEO4J_DATABASE', 'neo4j'))
@@ -62,11 +72,15 @@ class TripleDBManager:
                 instance.kg = None
 
             if not instance.pg or not instance.neo:
-                raise ValueError("Postgres and Neo4j must be healthy for TripleDBManager (Astra is optional)")
+                raise ValueError("Postgres and Neo4j are required for TripleDBManager")
+
 
             cls._instance = instance
 
+        # Ensure health endpoint never crashes due to missing optional deps.
+        # (Astra may be None in test env.)
         return cls._instance
+
 
     def create_linked_course(self, title: str, audience: str = 'general') -> int:
         if not self.pg:
@@ -74,11 +88,8 @@ class TripleDBManager:
         course_id = self.pg.create_course(title, audience)
 
         if self.kg and self.neo:
-            self.kg.add_topic('Introduction', f'Intro to {title}')
-            self.kg.add_topic('Advanced', f'Advanced {title}')
-            self.kg.add_prerequisite('Advanced', 'Introduction')
-            self.neo.link_topics_to_course(course_id, title, ['Introduction', 'Advanced'])
-
+            # Hardcoded topics removed to allow for dynamic syllabus generation
+            pass
         if self.astra:
             sample_texts = [
                 f'Sample content for {title}: Introduction.',
@@ -91,9 +102,8 @@ class TripleDBManager:
             try:
                 self.astra.upsert_syllabus_chunks(sample_texts, sample_metas, topic_id=f"course_{course_id}_intro")
             except Exception as e:
-                print(f"⚠️ Astra upsert failed for course {course_id}: {e}")
-        else:
-            print(f"⚠️ Astra unavailable — skipping vector upsert for course {course_id}")
+                print(f"❌ Astra upsert failed for course {course_id}: {e}")
+                raise
 
         print(f'✅ Linked course {course_id} across available DBs')
         return course_id

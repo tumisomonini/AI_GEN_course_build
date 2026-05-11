@@ -4,6 +4,7 @@ from typing import List, Optional, Callable
 import json
 
 try:
+    from Domain.syllabus import SyllabusState
     from Application.Workflows.syllabus_workflow import create_syllabus_workflow
 except ImportError:
     create_syllabus_workflow: Optional[Callable] = None
@@ -14,13 +15,14 @@ except ImportError:
     get_agents: Callable[[], dict] = lambda: {}
 
 try:
-    from Application.Ports.scraper import scrape_relevant_syllabi
+    from Application.Ports.scraper import scrape_relevant_syllabi, scrape_relevant_syllabi_async
 except ImportError:
     scrape_relevant_syllabi: Optional[Callable] = lambda title, max_results: []
+    scrape_relevant_syllabi_async: Optional[Callable] = lambda title, max_results: []
 
 
 class SyllabusRequest(BaseModel):
-    topics: List[str] = ["Intro to Python", "Advanced Python"]
+    topics: List[str] = []
     title: Optional[str] = None
 
 class ScrapeRequest(BaseModel):
@@ -34,7 +36,10 @@ async def scrape_syllabus(request: ScrapeRequest):
     if scrape_relevant_syllabi is None:
         raise HTTPException(503, "Scraper service not available - check dependencies")
     try:
-        syllabi = scrape_relevant_syllabi(request.title, max_results=5)
+        if scrape_relevant_syllabi_async is not None:
+            syllabi = await scrape_relevant_syllabi_async(request.title, max_results=5)
+        else:
+            syllabi = scrape_relevant_syllabi(request.title, max_results=5)
         
         # Flatten and upsert top syllabi to AstraDB (user_syllabi collection)
         all_texts = []
@@ -53,24 +58,28 @@ async def scrape_syllabus(request: ScrapeRequest):
                                 "type": "relevant_syllabus_chunk"
                             })
         
-        # Upsert top chunks to Astra if available
+        # Upsert top chunks to Astra (MANDATORY)
         if all_texts:
             try:
                 from Application.API.dependencies import get_triple_db_manager
                 manager = get_triple_db_manager()
                 repo = manager.astra
-                if repo:
-                    import threading
-                    def background_upsert(texts, metas):
-                        try:
-                            repo.upsert_syllabus_chunks(texts, metas)
-                        except Exception as e:
-                            print(f"❌ Scrape endpoint background upsert failed: {e}")
+                if repo is None:
+                    raise HTTPException(503, "AstraDB not available - required for syllabus scraping")
+                # Astra is mandatory, repo should always exist
+                import threading
+                def background_upsert(texts, metas):
+                    try:
+                        repo.upsert_syllabus_chunks(texts, metas)
+                    except Exception as e:
+                        print(f"❌ Scrape endpoint background upsert failed: {e}")
+                        raise
 
-                    thread = threading.Thread(target=background_upsert, args=(all_texts, all_metadatas), daemon=True)
-                    thread.start()
+                thread = threading.Thread(target=background_upsert, args=(all_texts, all_metadatas), daemon=True)
+                thread.start()
             except Exception as e:
-                print(f"⚠️ Astra upsert initialization failed: {e}")
+                print(f"❌ Astra upsert failed (mandatory): {e}")
+                raise
         
         return {
             "status": "success",
@@ -106,7 +115,7 @@ async def generate_syllabus(request: SyllabusRequest):
             "level": "beginner",
             "duration_months": 3
         }
-        
+        invoke_data = SyllabusState(**invoke_data).model_dump() # Explicitly validate and dump to ensure correct format
         # Must use ainvoke for graphs with async nodes (Author/Reviewer)
         result = await workflow.ainvoke(invoke_data)
         
@@ -119,4 +128,3 @@ async def generate_syllabus(request: SyllabusRequest):
         traceback.print_exc()
         print(f"Error type: {type(e).__name__}, message: {str(e)}")
         raise HTTPException(500, f"Generation failed: {type(e).__name__}: {str(e)}")
-

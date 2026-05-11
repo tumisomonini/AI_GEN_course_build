@@ -22,7 +22,7 @@ prometheus-fastapi-instrumentator
 prometheus-client
 pytest-mock
 langsmith
-langchain-tracing
+
 networkx
 scikit-learn
 sentence-transformers
