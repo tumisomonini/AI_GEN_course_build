@@ -185,15 +185,18 @@ function clearConsole() {
 }
 
 function displaySyllabusResults(data, title) {
+    // Backend error responses are raised as HTTP errors by api.js, so this function
+    // should only see success payloads.
     document.getElementById('results-title').textContent = `Syllabus: ${title || data.title || 'Course'}`;
     const content = document.getElementById('syllabus-content');
-    const syllabus = data.syllabus || [];
-    const chapters = data.chapters || [];
+    const syllabus = data?.syllabus || [];
+    const chapters = data?.chapters || [];
 
     if (!syllabus.length) {
-        content.innerHTML = '<p>No syllabus returned. Try again.</p>';
+        content.innerHTML = '<p>No syllabus returned. Check server logs for details.</p>';
         return;
     }
+
 
     content.innerHTML = `
         <section class="syllabus-section">

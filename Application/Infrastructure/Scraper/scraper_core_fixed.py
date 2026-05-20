@@ -31,6 +31,9 @@ from Application.Infrastructure.ETL.cleaner import clean_raw_text, clean_syllabu
 from Application.Infrastructure.Scraper.web_scraper import scrape_web_syllabus
 from Application.Infrastructure.Scraper.pdf_scraper import scrape_pdf_syllabus
 
+from Application.Infrastructure.Scraper.llm_triage import triage_results
+
+
 # Load environment variables
 _ENV_PATH = Path(__file__).resolve().parents[3] / '.env'
 if _ENV_PATH.exists():
@@ -200,8 +203,13 @@ class Scraper:
     async def search_and_scrape_async(self, course_title: str, max_results: int = 3) -> List[Dict[str, Any]]:
         """
         Async syllabus scraping: DDG search + parallel async Playwright page fetches.
+
+        Latency improvement: optional LLM triage to decide which search results are worth
+        fully scraping (Playwright/PDF). If LLM is disabled or fails, fall back to the
+        original behavior.
         """
         cache_key = f"scraper_cache:{course_title.lower().strip()}"
+
         if self.redis_client:
             try:
                 cached_data = self.redis_client.get(cache_key)
@@ -214,13 +222,80 @@ class Scraper:
         if not _DDGS_AVAILABLE or _DDGS is None:
             return [{'error': 'Search dependency missing. Run pip install duckduckgo-search', 'quality_score': 0}]
 
+        # Candidate search: Serpapi (preferred) -> DDG (fallback)
         try:
             search_query = f'{course_title} course syllabus topics outline'
-            search_cls = _DDGS
-            assert search_cls is not None
-            results = await asyncio.to_thread(lambda: list(search_cls().text(search_query, max_results=max_results)))
-        except Exception as e:
-            return [{'error': f'DDG search failed: {e}', 'quality_score': 0}]
+
+            serpapi_key = os.getenv("SERPAPI_API_KEY")
+            if serpapi_key:
+                from Application.Infrastructure.Scraper.serpapi_search import serpapi_search
+                serp_results = await asyncio.to_thread(
+                    lambda: serpapi_search(search_query, max_results=max_results)
+                )
+
+                # Expect dicts with 'href' and 'title'
+                results = [
+                    {
+                        'href': r.get('href', ''),
+                        'title': r.get('title', 'Unknown'),
+                    }
+                    for r in (serp_results or [])
+                    if r.get('href')
+                ]
+
+                if not results:
+                    raise RuntimeError("Serpapi returned no results")
+            else:
+                raise RuntimeError("SERPAPI_API_KEY not set")
+
+        except Exception:
+            try:
+                if not _DDGS_AVAILABLE or _DDGS is None:
+                    return [{'error': 'Search dependency missing. Install serpapi or duckduckgo-search', 'quality_score': 0}]
+
+                search_cls = _DDGS
+                assert search_cls is not None
+                results = await asyncio.to_thread(
+                    lambda: list(search_cls().text(search_query, max_results=max_results))
+                )
+            except Exception as e:
+                return [{'error': f'Search failed: {e}', 'quality_score': 0}]
+
+
+        # ---------------- LLM triage (optional) ----------------
+        # Decide which results to fully scrape to reduce Playwright latency.
+        try:
+            triage_top_k = min(max_results, int(os.getenv("LLM_TRIAGE_TOP_K", "2")))
+        except Exception:
+            triage_top_k = min(max_results, 2)
+
+        # LLM triage can be disabled for tests or deployments.
+        # If disabled, keep original behavior.
+        llm_enabled = os.getenv("LLM_TRIAGE_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+
+        # Always define filtered_results to avoid UnboundLocalError when triage is disabled.
+        filtered_results = results
+
+        if llm_enabled:
+            try:
+                triage = await asyncio.to_thread(
+                    triage_results,
+                    course_title=course_title,
+                    results=results,
+                    select_top_k=triage_top_k,
+                )
+                selected_indices = set(triage.selected_indices)
+            except Exception:
+                selected_indices = set(range(min(triage_top_k, len(results))))
+
+            triaged_results = [r for i, r in enumerate(results) if i in selected_indices]
+            # If triage returned nothing usable, keep original behavior.
+            if triaged_results:
+                filtered_results = triaged_results
+                results = filtered_results
+
+
+
 
         async def _process_result(result):
             url = result.get('href', '')
@@ -246,9 +321,14 @@ class Scraper:
             except Exception as scrape_err:
                 return {'error': str(scrape_err), 'source_url': url, 'source_title': source_title, 'quality_score': 0}
 
-        syllabi = await asyncio.gather(*[_process_result(r) for r in results])
+        syllabi = await asyncio.gather(*[_process_result(r) for r in filtered_results])
+
         syllabi = sorted(syllabi, key=lambda x: x.get('quality_score', 0), reverse=True)
         final_results = syllabi[:3]
+
+        # If we triaged to fewer candidates, keep return shape stable.
+        # Caller expects up to 3 results.
+
 
         if self.redis_client and final_results:
             try:

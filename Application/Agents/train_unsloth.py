@@ -76,8 +76,6 @@ def train():
         optim="adamw_8bit",
         weight_decay=0.01,
         lr_scheduler_type="cosine",
-        fp16=not torch.cuda.is_bf16_supported(),
-        bf16=torch.cuda.is_bf16_supported(),
         logging_steps=1,
         report_to="none",
         save_strategy="epoch",

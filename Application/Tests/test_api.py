@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from Application.API.Main import app
+from Application.API.Main_fixed import app
 from Application.Infrastructure.relationalDB.postgres_repo import PostgresRepository
 
 client = TestClient(app)

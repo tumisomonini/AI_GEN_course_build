@@ -140,15 +140,17 @@ def get_robots():
     return "User-agent: *\nDisallow: /syllabus/\nDisallow: /courses/\nDisallow: /session/"
 
 # Static mounts MUST come after all API routes — mount("/") shadows everything registered after it
+frontend_path = Path(__file__).parent.parent.parent / "Front_End"
 pages_path = Path(__file__).parent.parent.parent / "Pages"
+
 if pages_path.exists():
     app.mount("/Front_End", StaticFiles(directory=frontend_path, html=True), name="Frontend")
     print(f"✅ Pages served from {pages_path} at /Pages")
 
-frontend_path = Path(__file__).parent.parent.parent / "Front_End"
 if frontend_path.exists():
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
     print(f"✅ Frontend served from {frontend_path} at /")
+
 
 @app.websocket("/ws/health")
 async def websocket_health_check(websocket: WebSocket):
@@ -208,4 +210,9 @@ async def health():
         'pipeline': 'integrated'
     }
 
-print("🎓 Real course builder live at http://localhost:8000/Pages/index.html")
+print("🎓 Real course builder live at http://localhost:8000/Front_End/index.html")
+
+# NOTE: This file was previously duplicated as Application/API/Main.py.
+# Remove duplicates by keeping only one canonical entrypoint.
+# The test-suite/imports should use Application/API/Main_fixed.py. 
+

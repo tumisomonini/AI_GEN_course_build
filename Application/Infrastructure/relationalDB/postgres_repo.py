@@ -252,7 +252,7 @@ CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
             # The schema defines `courses.title` as UNIQUE, so this upsert is valid.
             cur.execute(
                 """
-                INSERT INTO courses (title, description, audience, status)
+INSERT INTO courses (title, description, audience, status)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (title) DO UPDATE SET
                     description = EXCLUDED.description,
@@ -272,8 +272,7 @@ CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
                     """
 INSERT INTO chapters (course_id, title, content, chapter_order, status)
 VALUES (%s, %s, %s, %s, 'draft')
-ON CONFLICT (course_id, chapter_order) DO UPDATE SET
-    title = EXCLUDED.title, content = EXCLUDED.content, status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+ON CONFLICT DO NOTHING
 """,
                     (course_id, title, '', i + 1)
                 )

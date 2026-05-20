@@ -28,12 +28,6 @@ class AuthorAgent:
         self.repo = manager.pg if manager else repo
         self.kg = manager.kg if manager else kg
 
-        # 1. Try Local Inference (Unsloth/vLLM/Ollama)
-        local_url = os.getenv("LOCAL_LLM_URL")
-        if local_url:
-            if self._setup_client(local_url, "local-token", "LOCAL_LLM_MODEL", "unsloth-llama-3-8b", timeout=120.0):
-                return
-
         # Try Mistral first
         mistral_key = os.getenv("MISTRAL_API_KEY")
         if mistral_key:
@@ -277,4 +271,3 @@ Approximately {word_count} words."""
         final_selection.extend(search_results["vector"])
 
         return final_selection[:12]  # Slightly larger window for GPT-4o-mini
-

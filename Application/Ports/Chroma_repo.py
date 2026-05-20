@@ -51,6 +51,9 @@ class ChromaRepo:
         chroma_path = os.path.join(persist_dir, "chroma_db")
         os.makedirs(chroma_path, exist_ok=True)
 
+        if chromadb is None:
+            raise ImportError("chromadb is not installed. Please install it using 'pip install chromadb'.")
+
         # New Chroma client API (avoids deprecated Settings)
         client = chromadb.PersistentClient(path=chroma_path)
 

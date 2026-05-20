@@ -42,7 +42,9 @@ load_root_env()
 
 from Application.API.Endpoints.syllabus import router as syllabus_router
 from Application.API.Endpoints.courses import router as courses_router
+from Application.API.Endpoints.courses_generate import router as courses_generate_router
 from Application.API.Endpoints.session import router as session_router
+
 from Application.API.dependencies import get_postgres_repo, get_neo4j_repo, get_astra_repo, get_triple_db_manager
 from Application.API.agents import get_real_agents
 from Application.Ports.postgres_repo import PostgresRepo
@@ -158,7 +160,9 @@ async def catch_exceptions_middleware(request: Request, call_next):
 
 app.include_router(syllabus_router, prefix="/syllabus", tags=["Syllabus"])
 app.include_router(courses_router, prefix="/courses", tags=["Courses"])
+app.include_router(courses_generate_router, prefix="/courses", tags=["Courses"])
 app.include_router(session_router, prefix="/session", tags=["Session"])
+
 
 @app.get("/health-check", include_in_schema=False)
 async def root():
@@ -170,24 +174,28 @@ def get_robots():
     """Compliance: Prevent search engines from indexing API routes."""
     return "User-agent: *\nDisallow: /syllabus/\nDisallow: /courses/\nDisallow: /session/"
 
-# Static mounts MUST come after all API routes.
-# Important: avoid mounting StaticFiles at "/" in test contexts because it can shadow API routes.
+# Static mounts MUST come after all API routes to avoid shadowing functional endpoints.
+frontend_path = Path(__file__).parent.parent.parent / "Front_End"
 pages_path = Path(__file__).parent.parent.parent / "Pages"
+
 if pages_path.exists():
     app.mount("/Pages", StaticFiles(directory=pages_path, html=True), name="pages")
     print(f"✅ Pages served from {pages_path} at /Pages")
 
-frontend_path = Path(__file__).parent.parent.parent / "Front_End"
-# Avoid StaticFiles mounting during tests to prevent route shadowing (e.g., /health returning 404).
+if frontend_path.exists():
+    # Mount at /Front_End to match the logged URL and ensure legacy path compatibility
+    app.mount("/Front_End", StaticFiles(directory=frontend_path, html=True), name="frontend_legacy")
+    print(f"✅ Frontend served from {frontend_path} at /Front_End")
+
+# Avoid shadowing during tests where root routes might be used for validation.
 _is_pytest = os.getenv("PYTEST_CURRENT_TEST") is not None or "pytest" in sys.modules
 if frontend_path.exists() and os.getenv("DISABLE_FRONTEND_MOUNT") != "1" and not _is_pytest:
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
     print(f"✅ Frontend served from {frontend_path} at /")
 
-# Even during tests, ensure the root endpoint returns the expected frontend page.
-# Tests expect GET / to return 200 (not 404).
 @app.get("/", include_in_schema=False)
 async def root_index():
+    """Explicit root handler for index.html."""
     if not frontend_path.exists():
         return PlainTextResponse(status_code=404, content="index.html not found")
     return FileResponse(frontend_path / "index.html")
@@ -249,9 +257,8 @@ async def health():
         }
 
 
-# NOTE: /health endpoint is defined once above.
-# This older duplicate was kept during refactors and breaks tests that expect the first definition.
 # Full system health is now exposed at /health-full.
+
 
 @app.get("/health-full")
 async def health_full():
@@ -298,4 +305,4 @@ async def health_full():
     }
 
 
-print("🎓 Real course builder live at http://localhost:8000/Pages/workflow.html")
+print("🎓 Real course builder live at http://localhost:8000/Front_End/index.html")

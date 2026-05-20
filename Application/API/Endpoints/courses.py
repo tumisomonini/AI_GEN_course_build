@@ -275,13 +275,37 @@ async def approve_and_generate_full(
     modifications: Optional[List[str]] = Body(None),
     repo: PostgresRepo = Depends(get_postgres_repo),
 ):
+    """Approve template -> trigger full content generation background.
+
+    Guardrail: do not start full generation until the outline is ready.
     """
-    Approve template -> trigger full content generation background.
-    Allows user to provide a modified list of chapter titles.
-    """
+    # 1) Require outline phase to be complete
+    course_status_row = repo.get_course_status(course_id)
+    status = (course_status_row or {}).get("status")
+    if status != "awaiting_approval":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Outline not ready for course_id={course_id}. "
+                f"Current status: {status!r}. Wait until outline generation completes."
+            ),
+        )
+
+    # 2) Require existing approved template with chapters
+    review_data = repo.get_course_review(course_id)
+    template = (review_data or {}).get("template", {}) if isinstance(review_data, dict) else {}
+    chapters = template.get("chapters", []) if isinstance(template, dict) else []
+    if not chapters or not isinstance(chapters, list):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No approved outline template/chapter list found for course_id={course_id}. "
+                "Outline generation may have failed or DB state is inconsistent."
+            ),
+        )
+
+    # 3) Optional modifications are applied only after guardrails pass
     if modifications:
-        review_data = repo.get_course_review(course_id)
-        template = review_data.get("template", {})
         template["chapters"] = modifications
         repo.update_course_template(course_id, template)
 

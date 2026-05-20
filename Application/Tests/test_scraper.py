@@ -71,6 +71,7 @@ def test_cleaner_syllabus_dict():
     assert stats['items_kept'] == 2
 
 def test_scrape_relevant_syllabi_parallel(monkeypatch):
+
     dummy_results = [
         {'href': 'https://example.com/syllabus1', 'title': 'syl1'},
         {'href': 'https://example.com/syllabus2', 'title': 'syl2'},
@@ -87,6 +88,11 @@ def test_scrape_relevant_syllabi_parallel(monkeypatch):
 
     monkeypatch.setattr('Application.Infrastructure.Scraper.scraper_core.Scraper.redis_client', None) # Bypass cache
     monkeypatch.setattr('Application.Infrastructure.Scraper.scraper_core.DDGS', FakeDDGS)
+
+    # Disable LLM triage during test run (deterministic behavior)
+    import os
+    monkeypatch.setenv('LLM_TRIAGE_ENABLED', '0')
+
     monkeypatch.setattr('Application.Infrastructure.Scraper.scraper_core.Scraper.scrape_web', lambda self, url: 'module1\nmodule2\n junk \n duplicate\n duplicate')
     monkeypatch.setattr('Application.Infrastructure.Scraper.scraper_core.Scraper.scrape_pdf', lambda self, url: 'pdfmodule')
 

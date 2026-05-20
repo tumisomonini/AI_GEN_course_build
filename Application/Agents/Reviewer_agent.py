@@ -21,11 +21,6 @@ class ReviewerAgent:
 
     def _init_client(self):
         """Initialize LLM client with priority: Local -> Mistral -> OpenRouter"""
-        local_url = os.getenv("LOCAL_LLM_URL")
-        if local_url:
-            if self._setup_client(local_url, "local-token", "LOCAL_LLM_MODEL", "unsloth-llama-3-8b"):
-                return
-
         # Try Mistral first
         mistral_key = os.getenv("MISTRAL_API_KEY")
         if mistral_key:

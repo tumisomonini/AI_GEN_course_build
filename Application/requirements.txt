@@ -10,6 +10,8 @@ langchain-astradb
 langgraph
 playwright
 duckduckgo-search
+serpapi
+
 beautifulsoup4
 pypdf
 python-docx
@@ -22,6 +24,7 @@ prometheus-fastapi-instrumentator
 prometheus-client
 pytest-mock
 langsmith
+neomodel
 
 networkx
 scikit-learn

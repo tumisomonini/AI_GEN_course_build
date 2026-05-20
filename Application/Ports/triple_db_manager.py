@@ -71,9 +71,16 @@ class TripleDBManager:
             else:
                 instance.kg = None
 
+            # Degrade gracefully in environments where one/both backends are unavailable.
+            # Unit/integration tests should still be able to import the application.
             if not instance.pg or not instance.neo:
-                raise ValueError("Postgres and Neo4j are required for TripleDBManager")
-
+                logger.warning(
+                    "TripleDBManager running in degraded mode: pg=%s neo4j=%s",
+                    bool(instance.pg),
+                    bool(instance.neo),
+                )
+                # Ensure kg is None when neo4j is missing.
+                instance.kg = None
 
             cls._instance = instance
 

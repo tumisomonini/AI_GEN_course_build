@@ -1,5 +1,5 @@
-"""Manual performance harness.
 
+"""
 This file is intentionally **not** collected/executed by default unit tests.
 Use `Application/Tests/conftest_perf.py` with `RUN_PERF_TESTS=1` to run the
 perf tests in a controlled manner.
@@ -29,4 +29,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

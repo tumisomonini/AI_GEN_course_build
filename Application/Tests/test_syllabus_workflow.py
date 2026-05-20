@@ -201,12 +201,8 @@ async def test_workflow_with_assembler_failure(syllabus_workflow, mock_planner, 
     )
 
     # Execute workflow and expect exception
-    result = await syllabus_workflow.ainvoke(initial_state.model_dump())
-    # The workflow is designed to be resilient and create error chapters, not raise an exception.
-    # Assert that an error chapter is present.
-    error_chapters = [ch for ch in result["chapters"] if ch.status == "error"]
-    assert len(error_chapters) == 1
-    assert "Failed to generate content" in error_chapters[0].content
+    with pytest.raises(Exception) as excinfo:
+        await syllabus_workflow.ainvoke(initial_state.model_dump())
 
     assert "Failed to export document" in str(excinfo.value)
 
